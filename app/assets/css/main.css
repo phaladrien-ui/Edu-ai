@@ -1,0 +1,82 @@
+/*@import "tailwindcss" theme(static);
+@import "@nuxt/ui";
+
+@theme static {
+  --font-sans: 'Public Sans', sans-serif;
+
+  --color-green-50: #EFFDF5;
+  --color-green-100: #D9FBE8;
+  --color-green-200: #B3F5D1;
+  --color-green-300: #75EDAE;
+  --color-green-400: #00DC82;
+  --color-green-500: #00C16A;
+  --color-green-600: #00A155;
+  --color-green-700: #007F45;
+  --color-green-800: #016538;
+  --color-green-900: #0A5331;
+  --color-green-950: #052E16;
+}
+
+:root {
+  --ui-container: var(--container-3xl);
+}
+$*/
+@import "tailwindcss" theme(static);
+@import "@nuxt/ui";
+
+@theme static {
+  --font-sans: 'Public Sans', sans-serif;
+
+  /* Couleurs EduAI - Palette principale */
+  --color-eduai-primary-50: #eff6ff;
+  --color-eduai-primary-100: #dbeafe;
+  --color-eduai-primary-200: #bfdbfe;
+  --color-eduai-primary-300: #93c5fd;
+  --color-eduai-primary-400: #60a5fa;
+  --color-eduai-primary-500: #3b82f6; /* Bleu EduAI */
+  --color-eduai-primary-600: #2563eb;
+  --color-eduai-primary-700: #1d4ed8;
+  --color-eduai-primary-800: #1e40af;
+  --color-eduai-primary-900: #1e3a8a;
+  --color-eduai-primary-950: #172554;
+
+  /* Couleurs secondaires - Éducation/Savoir */
+  --color-eduai-secondary-50: #f0f9ff;
+  --color-eduai-secondary-100: #e0f2fe;
+  --color-eduai-secondary-200: #bae6fd;
+  --color-eduai-secondary-300: #7dd3fc;
+  --color-eduai-secondary-400: #38bdf8;
+  --color-eduai-secondary-500: #0ea5e9; /* Cyan éducatif */
+  --color-eduai-secondary-600: #0284c7;
+  --color-eduai-secondary-700: #0369a1;
+  --color-eduai-secondary-800: #075985;
+  --color-eduai-secondary-900: #0c4a6e;
+  --color-eduai-secondary-950: #082f49;
+
+  /* Succès/Validation - hérité du vert */
+  --color-green-50: #EFFDF5;
+  --color-green-100: #D9FBE8;
+  --color-green-200: #B3F5D1;
+  --color-green-300: #75EDAE;
+  --color-green-400: #00DC82;
+  --color-green-500: #00C16A;
+  --color-green-600: #00A155;
+  --color-green-700: #007F45;
+  --color-green-800: #016538;
+  --color-green-900: #0A5331;
+  --color-green-950: #052E16;
+}
+
+:root {
+  --ui-container: var(--container-3xl);
+  
+  /* Variables EduAI globales */
+  --eduai-brand-color: var(--color-eduai-primary-500);
+  --eduai-accent-color: var(--color-eduai-secondary-500);
+  --eduai-success-color: var(--color-green-500);
+}
+
+/* Optionnel : appliquer la couleur EduAI par défaut */
+body {
+  --ui-primary: var(--eduai-brand-color);
+}
