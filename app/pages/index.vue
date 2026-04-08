@@ -86,8 +86,8 @@ const quickChats = [
 
     <template #body>
       <DragDropOverlay :show="isDragging" />
-      <UContainer ref="dropzoneRef" class="flex-1 flex flex-col justify-center gap-4 sm:gap-6 py-8">
-        <h1 class="text-2xl sm:text-4xl text-highlighted font-bold px-4 sm:px-0">
+      <UContainer ref="dropzoneRef" class="flex-1 flex flex-col justify-center gap-4 sm:gap-5 py-8">
+        <h1 class="text-3xl sm:text-3xl text-highlighted font-bold px-4 sm:px-0">
           Que voulez-vous apprendre aujourd'hui ?
         </h1>
 
@@ -95,7 +95,7 @@ const quickChats = [
           v-model="input"
           :status="loading ? 'streaming' : 'ready'"
           :disabled="isUploading"
-          class="[view-transition-name:chat-prompt] [&_textarea]:!py-5 [&_textarea]:!text-base [&_textarea]:!rounded-lg"
+          class="[view-transition-name:chat-prompt] [&_textarea]:!py-4 [&_textarea]:!text-base [&_textarea]:!rounded-lg [&_textarea]:!caret-blue-600"
           variant="subtle"
           :ui="{ base: 'px-1.5' }"
           @submit="onSubmit"
@@ -122,12 +122,16 @@ const quickChats = [
               <ModelSelect v-model="model" />
             </div>
 
-            <UChatPromptSubmit color="neutral" size="sm" :disabled="isUploading" />
+            <UChatPromptSubmit 
+              color="neutral" 
+              size="sm" 
+              :disabled="isUploading"
+              class="!bg-blue-600 !hover:bg-blue-700 !text-white !transition-all !duration-200 !rounded-lg"
+            />
           </template>
         </UChatPrompt>
 
-        <!-- Suggestions optimisées pour mobile -->
-        <div class="flex flex-wrap gap-2 px-1">
+        <div class="flex flex-wrap gap-2">
           <UButton
             v-for="quickChat in quickChats"
             :key="quickChat.label"
@@ -136,7 +140,7 @@ const quickChats = [
             size="sm"
             color="neutral"
             variant="outline"
-            class="rounded-full !px-3 !py-1.5 !text-sm"
+            class="rounded-full !px-4 !py-2 !text-sm"
             @click="createChat(quickChat.label)"
           />
         </div>
