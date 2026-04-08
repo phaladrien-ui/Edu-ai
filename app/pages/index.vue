@@ -20,7 +20,7 @@ async function createChat(prompt: string) {
   input.value = prompt
   loading.value = true
 
-  const parts: Array<{ type: string, text?: string, mediaType?: string, url?: string }> = [{ type: 'text', text: prompt }]
+  const parts: Array<{ type: string, text?: string, mediaType?: string, url?: string }> = [{ type: 'text', text: prompt }]  
 
   if (uploadedFiles.value.length > 0) {
     parts.push(...uploadedFiles.value)
@@ -48,34 +48,33 @@ async function onSubmit() {
 
 const quickChats = [
   {
-  label: 'Comment fonctionne l’électromagnétisme?',
-  icon: 'i-logos-lightning'
-},
-{
-  label: 'Quels sont les principes de la physique optique?',
-  icon: 'i-logos-lightbulb'
-},
-{
-  label: 'Comment interpréter des données statistiques?',
-  icon: 'i-logos-bar-chart'
-},
-{
-  label: 'Comment calculer des probabilités simples?',
-  icon: 'i-logos-dice'
-},
-{
-  label: 'Comment résoudre un problème en algèbre linéaire?',
-  icon: 'i-logos-math'
-},
-{
-  label: 'Quelles sont les bases de la chimie organique?',
-  icon: 'i-logos-flask'
-},
-{
-  label: 'Comment aborder l’analyse mathématique?',
-  icon: 'i-logos-calculator'
-}
-
+    label: 'Comment fonctionne l\'électromagnétisme?',
+    icon: 'i-logos-lightning'
+  },
+  {
+    label: 'Quels sont les principes de la physique optique?',
+    icon: 'i-logos-lightbulb'
+  },
+  {
+    label: 'Comment interpréter des données statistiques?',
+    icon: 'i-logos-bar-chart'
+  },
+  {
+    label: 'Comment calculer des probabilités simples?',
+    icon: 'i-logos-dice'
+  },
+  {
+    label: 'Comment résoudre un problème en algèbre linéaire?',
+    icon: 'i-logos-math'
+  },
+  {
+    label: 'Quelles sont les bases de la chimie organique?',
+    icon: 'i-logos-flask'
+  },
+  {
+    label: 'Comment aborder l\'analyse mathématique?',
+    icon: 'i-logos-calculator'
+  }
 ]
 </script>
 
@@ -89,14 +88,14 @@ const quickChats = [
       <DragDropOverlay :show="isDragging" />
       <UContainer ref="dropzoneRef" class="flex-1 flex flex-col justify-center gap-4 sm:gap-6 py-8">
         <h1 class="text-3xl sm:text-4xl text-highlighted font-bold">
-          Que voulez-vous apprendre aujourd'hui ? 
+          Que voulez-vous apprendre aujourd'hui ?
         </h1>
 
         <UChatPrompt
           v-model="input"
           :status="loading ? 'streaming' : 'ready'"
           :disabled="isUploading"
-          class="[view-transition-name:chat-prompt]"
+          class="[view-transition-name:chat-prompt] [&_textarea]:!py-5 [&_textarea]:!text-base [&_textarea]:!rounded-lg"
           variant="subtle"
           :ui="{ base: 'px-1.5' }"
           @submit="onSubmit"
@@ -127,16 +126,17 @@ const quickChats = [
           </template>
         </UChatPrompt>
 
-        <div class="flex flex-wrap gap-2">
+        <!-- Suggestions agrandies -->
+        <div class="flex flex-wrap gap-3">
           <UButton
             v-for="quickChat in quickChats"
             :key="quickChat.label"
             :icon="quickChat.icon"
             :label="quickChat.label"
-            size="sm"
+            size="md"
             color="neutral"
             variant="outline"
-            class="rounded-full"
+            class="rounded-full !px-5 !py-2.5 !text-base"
             @click="createChat(quickChat.label)"
           />
         </div>
