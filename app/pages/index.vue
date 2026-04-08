@@ -86,8 +86,8 @@ const quickChats = [
 
     <template #body>
       <DragDropOverlay :show="isDragging" />
-      <UContainer ref="dropzoneRef" class="flex-1 flex flex-col justify-center gap-4 sm:gap-5 py-8">
-        <h1 class="text-3xl sm:text-3xl text-highlighted font-bold px-4 sm:px-0">
+      <UContainer ref="dropzoneRef" class="flex-1 flex flex-col justify-center gap-5 sm:gap-7 py-8">
+        <h1 class="text-3xl sm:text-4xl text-highlighted !font-light px-4 sm:px-0 text-center sm:text-left tracking-tight">
           Que voulez-vous apprendre aujourd'hui ?
         </h1>
 
@@ -95,9 +95,10 @@ const quickChats = [
           v-model="input"
           :status="loading ? 'streaming' : 'ready'"
           :disabled="isUploading"
-          class="[view-transition-name:chat-prompt] [&_textarea]:!py-4 [&_textarea]:!text-base [&_textarea]:!rounded-lg [&_textarea]:!caret-blue-600"
+          placeholder="Message ChatMe"
+          class="[view-transition-name:chat-prompt] [&_textarea]:!py-5 [&_textarea]:!text-lg [&_textarea]:!rounded-xl [&_textarea]:!caret-blue-600 [&_textarea]:!px-4 [&_textarea]:!leading-relaxed [&_textarea]:!font-normal [&_textarea]:!text-gray-800 dark:[&_textarea]:!text-gray-200 [&_textarea::placeholder]:!text-base [&_textarea::placeholder]:!font-normal"
           variant="subtle"
-          :ui="{ base: 'px-1.5' }"
+          :ui="{ base: 'px-2' }"
           @submit="onSubmit"
         >
           <template v-if="files.length > 0" #header>
@@ -117,7 +118,7 @@ const quickChats = [
           </template>
 
           <template #footer>
-            <div class="flex items-center gap-1">
+            <div class="flex items-center gap-2">
               <FileUploadButton @files-selected="addFiles($event)" />
               <ModelSelect v-model="model" />
             </div>
@@ -126,23 +127,23 @@ const quickChats = [
               color="neutral" 
               size="sm" 
               :disabled="isUploading"
-              class="!bg-blue-600 !hover:bg-blue-700 !text-white !transition-all !duration-200 !rounded-lg"
+              class="!bg-blue-600 !hover:bg-blue-700 !text-white !transition-all !duration-200 !rounded-xl !p-2.5"
             />
           </template>
         </UChatPrompt>
 
-        <div class="flex flex-wrap gap-2">
-          <UButton
+        <div class="flex flex-col gap-3 mt-4">
+          <button
             v-for="quickChat in quickChats"
             :key="quickChat.label"
-            :icon="quickChat.icon"
-            :label="quickChat.label"
-            size="sm"
-            color="neutral"
-            variant="outline"
-            class="rounded-full !px-4 !py-2 !text-sm"
+            class="flex items-center gap-3 text-left group transition-all duration-200 hover:translate-x-1 cursor-pointer"
             @click="createChat(quickChat.label)"
-          />
+          >
+            <span class="text-gray-300 dark:text-gray-600 group-hover:text-blue-500 transition-colors duration-200 text-lg">→</span>
+            <span class="text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 text-sm sm:text-base font-normal tracking-wide">
+              {{ quickChat.label }}
+            </span>
+          </button>
         </div>
       </UContainer>
     </template>
