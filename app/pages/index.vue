@@ -87,7 +87,7 @@ const quickChats = [
     <template #body>
       <DragDropOverlay :show="isDragging" />
       <UContainer ref="dropzoneRef" class="flex-1 flex flex-col justify-center gap-4 sm:gap-6 py-8">
-        <h1 class="text-3xl sm:text-4xl text-highlighted font-bold">
+        <h1 class="text-2xl sm:text-4xl text-highlighted font-bold px-4 sm:px-0">
           Que voulez-vous apprendre aujourd'hui ?
         </h1>
 
@@ -126,17 +126,17 @@ const quickChats = [
           </template>
         </UChatPrompt>
 
-        <!-- Suggestions agrandies -->
-        <div class="flex flex-wrap gap-3">
+        <!-- Suggestions optimisées pour mobile -->
+        <div class="flex flex-wrap gap-2 px-1">
           <UButton
             v-for="quickChat in quickChats"
             :key="quickChat.label"
             :icon="quickChat.icon"
             :label="quickChat.label"
-            size="md"
+            size="sm"
             color="neutral"
             variant="outline"
-            class="rounded-full !px-5 !py-2.5 !text-base"
+            class="rounded-full !px-3 !py-1.5 !text-sm"
             @click="createChat(quickChat.label)"
           />
         </div>
