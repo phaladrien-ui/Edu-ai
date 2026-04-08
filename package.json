@@ -26,6 +26,7 @@
     "@nuxtjs/mdc": "^0.19.1",
     "@vercel/blob": "^2.0.0",
     "ai": "^5.0.116",
+    "bcryptjs": "^3.0.3",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.1",
     "motion-v": "^2.2.0",
@@ -38,6 +39,7 @@
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.12.1",
+    "@nuxtjs/google-fonts": "^3.2.0",
     "@types/node": "^24.10.4",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.2",
