@@ -21,7 +21,7 @@ const {
 onMounted(() => {
   setTimeout(() => {
     suggestionsLoading.value = false
-  }, 800) // 800ms de chargement comme sur les plateformes modernes
+  }, 800)
 })
 
 async function createChat(prompt: string) {
@@ -95,18 +95,23 @@ const quickChats = [
     <template #body>
       <DragDropOverlay :show="isDragging" />
       <UContainer ref="dropzoneRef" class="flex-1 flex flex-col justify-center gap-5 sm:gap-7 py-8">
-        <h1 class="text-3xl sm:text-4xl text-highlighted !font-light px-4 sm:px-0 text-center sm:text-left tracking-tight">
+        <!-- Titre légèrement plus épais -->
+        <h1 class="text-3xl sm:text-4xl text-highlighted px-4 sm:px-0 text-center sm:text-left tracking-tight" style="font-weight: 350;">
           Que voulez-vous apprendre aujourd'hui ?
         </h1>
 
+        <!-- UChatPrompt avec bordure plus affirmée -->
         <UChatPrompt
           v-model="input"
           :status="loading ? 'streaming' : 'ready'"
           :disabled="isUploading"
           placeholder="Message ChatMe"
-          class="[view-transition-name:chat-prompt] [&_textarea]:!py-5 [&_textarea]:!text-lg [&_textarea]:!rounded-xl [&_textarea]:!caret-blue-600 [&_textarea]:!px-4 [&_textarea]:!leading-relaxed [&_textarea]:!font-normal [&_textarea]:!text-gray-800 dark:[&_textarea]:!text-gray-200 [&_textarea::placeholder]:!text-base [&_textarea::placeholder]:!font-normal submit-button-cursor"
+          class="[view-transition-name:chat-prompt] [&_textarea]:!py-5 [&_textarea]:!text-lg [&_textarea]:!rounded-xl [&_textarea]:!caret-blue-600 [&_textarea]:!px-4 [&_textarea]:!leading-relaxed [&_textarea]:!font-normal [&_textarea]:!text-gray-800 dark:[&_textarea]:!text-gray-200 [&_textarea::placeholder]:!text-base [&_textarea::placeholder]:!font-normal submit-button-cursor chat-prompt-border"
           variant="subtle"
-          :ui="{ base: 'px-2' }"
+          :ui="{ 
+            base: 'px-2',
+            wrapper: 'border border-gray-300 dark:border-gray-600 shadow-sm'
+          }"
           @submit="onSubmit"
         >
           <template v-if="files.length > 0" #header>
@@ -140,7 +145,7 @@ const quickChats = [
           </template>
         </UChatPrompt>
 
-        <!-- Suggestions avec skeleton loader -->
+        <!-- Suggestions -->
         <div class="flex flex-col gap-3 mt-4">
           <!-- Skeleton loaders -->
           <template v-if="suggestionsLoading">
@@ -164,7 +169,7 @@ const quickChats = [
             </div>
           </template>
 
-          <!-- Suggestions réelles avec animation d'apparition -->
+          <!-- Suggestions réelles -->
           <template v-else>
             <button
               v-for="(quickChat, index) in quickChats"
@@ -174,7 +179,8 @@ const quickChats = [
               @click="createChat(quickChat.label)"
             >
               <span class="text-gray-400 dark:text-gray-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-200 text-lg">→</span>
-              <span class="text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 text-sm sm:text-base font-normal tracking-wide">
+              <!-- Texte noir en thème clair, garde le même poids (font-normal) -->
+              <span class="text-gray-900 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 text-sm sm:text-base font-normal tracking-wide">
                 {{ quickChat.label }}
               </span>
             </button>
@@ -220,5 +226,26 @@ button,
 
 .animate-fade-in-up {
   animation: fade-in-up 0.4s ease-out forwards;
+}
+
+/* Bordure plus affirmée pour le composant UChatPrompt */
+.chat-prompt-border :deep(.u-chat-prompt) {
+  border-width: 1.5px !important;
+  border-color: #d1d5db !important;
+}
+
+.dark .chat-prompt-border :deep(.u-chat-prompt) {
+  border-color: #4b5563 !important;
+}
+
+/* Alternative via le ui wrapper */
+:deep(.u-chat-prompt) {
+  border-width: 1.5px !important;
+  border-color: #d1d5db !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.dark :deep(.u-chat-prompt) {
+  border-color: #4b5563 !important;
 }
 </style>
