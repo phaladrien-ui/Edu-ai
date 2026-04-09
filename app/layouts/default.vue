@@ -128,8 +128,8 @@ function toggleSidebar(e: MouseEvent) {
             </NuxtLink>
 
             <div v-if="!collapsed" class="flex items-center gap-1.5 ml-auto">
-              <UDashboardSearchButton collapsed />
-              <UDashboardSidebarCollapse />
+              <UDashboardSearchButton collapsed class="cursor-pointer" />
+              <UDashboardSidebarCollapse class="cursor-pointer" />
             </div>
           </div>
         </div>
@@ -406,16 +406,28 @@ function toggleSidebar(e: MouseEvent) {
   list-style: none !important;
 }
 
+/* Curseur pointer pour TOUS les éléments interactifs */
 .sidebar-scrollport button,
 .sidebar-scrollport a,
 .sidebar-scrollport [role="button"],
 .sidebar-scrollport .u-button,
-.sidebar-scrollport .cursor-pointer {
+.sidebar-scrollport .cursor-pointer,
+.sidebar-scrollport :deep(.u-dashboard-search-button),
+.sidebar-scrollport :deep(.u-dashboard-sidebar-collapse),
+.sidebar-wrapper :deep(.u-dashboard-search-button),
+.sidebar-wrapper :deep(.u-dashboard-sidebar-collapse) {
   cursor: pointer !important;
 }
 
+/* Curseur ew-resize pour les éléments non interactifs */
 .sidebar-scrollport h3,
 .sidebar-scrollport .text-muted:not(button):not(a):not([role="button"]) {
   cursor: ew-resize !important;
+}
+
+/* Force le curseur pointer sur les icônes de recherche et collapse dans le header */
+:deep(.u-dashboard-search-button),
+:deep(.u-dashboard-sidebar-collapse) {
+  cursor: pointer !important;
 }
 </style>

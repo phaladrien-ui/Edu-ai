@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const input = ref('')
 const loading = ref(false)
+const suggestionsLoading = ref(true)
 const chatId = crypto.randomUUID()
 
 const { model } = useModels()
@@ -15,6 +16,13 @@ const {
   removeFile,
   clearFiles
 } = useFileUploadWithStatus(chatId)
+
+// Simuler un chargement des suggestions
+onMounted(() => {
+  setTimeout(() => {
+    suggestionsLoading.value = false
+  }, 800) // 800ms de chargement comme sur les plateformes modernes
+})
 
 async function createChat(prompt: string) {
   input.value = prompt
@@ -96,7 +104,7 @@ const quickChats = [
           :status="loading ? 'streaming' : 'ready'"
           :disabled="isUploading"
           placeholder="Message ChatMe"
-          class="[view-transition-name:chat-prompt] [&_textarea]:!py-5 [&_textarea]:!text-lg [&_textarea]:!rounded-xl [&_textarea]:!caret-blue-600 [&_textarea]:!px-4 [&_textarea]:!leading-relaxed [&_textarea]:!font-normal [&_textarea]:!text-gray-800 dark:[&_textarea]:!text-gray-200 [&_textarea::placeholder]:!text-base [&_textarea::placeholder]:!font-normal"
+          class="[view-transition-name:chat-prompt] [&_textarea]:!py-5 [&_textarea]:!text-lg [&_textarea]:!rounded-xl [&_textarea]:!caret-blue-600 [&_textarea]:!px-4 [&_textarea]:!leading-relaxed [&_textarea]:!font-normal [&_textarea]:!text-gray-800 dark:[&_textarea]:!text-gray-200 [&_textarea::placeholder]:!text-base [&_textarea::placeholder]:!font-normal submit-button-cursor"
           variant="subtle"
           :ui="{ base: 'px-2' }"
           @submit="onSubmit"
@@ -127,25 +135,90 @@ const quickChats = [
               color="neutral" 
               size="sm" 
               :disabled="isUploading"
-              class="!bg-blue-600 !hover:bg-blue-700 !text-white !transition-all !duration-200 !rounded-xl !p-2.5"
+              class="!bg-blue-600 !hover:bg-blue-700 !text-white !transition-all !duration-200 !rounded-xl !p-2.5 cursor-pointer"
             />
           </template>
         </UChatPrompt>
 
+        <!-- Suggestions avec skeleton loader -->
         <div class="flex flex-col gap-3 mt-4">
-          <button
-            v-for="quickChat in quickChats"
-            :key="quickChat.label"
-            class="flex items-center gap-3 text-left group transition-all duration-200 hover:translate-x-1 cursor-pointer"
-            @click="createChat(quickChat.label)"
-          >
-            <span class="text-gray-300 dark:text-gray-600 group-hover:text-blue-500 transition-colors duration-200 text-lg">→</span>
-            <span class="text-gray-600 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 text-sm sm:text-base font-normal tracking-wide">
-              {{ quickChat.label }}
-            </span>
-          </button>
+          <!-- Skeleton loaders -->
+          <template v-if="suggestionsLoading">
+            <div 
+              v-for="i in 5" 
+              :key="i" 
+              class="flex items-center gap-3 animate-pulse"
+              :style="{ animationDelay: `${i * 100}ms` }"
+            >
+              <div class="w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+              <div 
+                class="h-4 bg-gray-200 dark:bg-gray-700 rounded"
+                :class="[
+                  i === 1 ? 'w-64' : 
+                  i === 2 ? 'w-72' : 
+                  i === 3 ? 'w-56' : 
+                  i === 4 ? 'w-80' : 
+                  'w-60'
+                ]"
+              ></div>
+            </div>
+          </template>
+
+          <!-- Suggestions réelles avec animation d'apparition -->
+          <template v-else>
+            <button
+              v-for="(quickChat, index) in quickChats"
+              :key="quickChat.label"
+              class="flex items-center gap-3 text-left group transition-all duration-200 hover:translate-x-1 cursor-pointer opacity-0 animate-fade-in-up"
+              :style="{ animationDelay: `${index * 50}ms` }"
+              @click="createChat(quickChat.label)"
+            >
+              <span class="text-gray-400 dark:text-gray-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-200 text-lg">→</span>
+              <span class="text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 text-sm sm:text-base font-normal tracking-wide">
+                {{ quickChat.label }}
+              </span>
+            </button>
+          </template>
         </div>
       </UContainer>
     </template>
   </UDashboardPanel>
 </template>
+
+<style scoped>
+/* Force le curseur pointer sur le bouton envoyer */
+.submit-button-cursor :deep(.u-chat-prompt-submit),
+.submit-button-cursor :deep(button[type="submit"]),
+:deep(.u-chat-prompt-submit),
+:deep(button[type="submit"]) {
+  cursor: pointer !important;
+}
+
+/* Curseur pointer pour tous les boutons */
+button,
+[role="button"],
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+/* Curseur pointer pour le bouton d'envoi spécifiquement */
+:deep(.u-chat-prompt-submit:hover) {
+  cursor: pointer !important;
+}
+
+/* Animation d'apparition des suggestions */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out forwards;
+}
+</style>
