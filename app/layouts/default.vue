@@ -7,6 +7,7 @@ const overlay = useOverlay()
 const { loggedIn, openInPopup } = useUserSession()
 
 const open = ref(false)
+const conversationsLoading = ref(true)
 
 const mainNavItems = [
   { label: 'ChatMe', value: 'chat', to: '/', icon: 'i-lucide-message-circle' },
@@ -33,6 +34,13 @@ const { data: chats, refresh: refreshChats } = await useFetch<Chat[]>('/api/chat
   }))
 })
 
+// Simuler un chargement des conversations
+onMounted(() => {
+  setTimeout(() => {
+    conversationsLoading.value = false
+  }, 600)
+})
+
 onNuxtReady(async () => {
   const first10 = (chats.value || []).slice(0, 10)
   for (const chat of first10) {
@@ -43,6 +51,10 @@ onNuxtReady(async () => {
 watch(loggedIn, () => {
   refreshChats()
   open.value = false
+  conversationsLoading.value = true
+  setTimeout(() => {
+    conversationsLoading.value = false
+  }, 400)
 })
 
 const { groups } = useChats(chats)
@@ -75,6 +87,10 @@ async function deleteChat(id: string) {
   })
 
   refreshChats()
+  conversationsLoading.value = true
+  setTimeout(() => {
+    conversationsLoading.value = false
+  }, 300)
 
   if (route.params.id === id) {
     navigateTo('/')
@@ -101,6 +117,9 @@ function toggleSidebar(e: MouseEvent) {
     open.value = !open.value
   }
 }
+
+// Nombre de skeletons à afficher
+const skeletonCount = 6
 </script>
 
 <template>
@@ -218,31 +237,78 @@ function toggleSidebar(e: MouseEvent) {
                 </h3>
 
                 <div class="w-full">
-                  <UNavigationMenu
-                    :items="items"
-                    :collapsed="collapsed"
-                    orientation="vertical"
-                    :ui="{ 
-                      link: 'overflow-hidden cursor-pointer font-light w-full px-3 group',
-                      wrapper: 'w-full',
-                      list: 'w-full space-y-0.5'
-                    }"
-                    class="w-full"
-                  >
-                    <template #chat-trailing="{ item }">
-                      <div class="flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <UButton
-                          icon="i-lucide-x"
-                          color="neutral"
-                          variant="ghost"
-                          size="xs"
-                          class="text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 p-0.5 cursor-pointer"
-                          tabindex="-1"
-                          @click.stop.prevent="deleteChat((item as any).id)"
-                        />
+                  <!-- Skeleton loaders pour les conversations -->
+                  <template v-if="conversationsLoading">
+                    <div class="w-full space-y-1">
+                      <!-- Groupes avec labels -->
+                      <div 
+                        v-for="groupIndex in 2" 
+                        :key="`group-${groupIndex}`"
+                        class="w-full"
+                      >
+                        <!-- Label du groupe -->
+                        <div class="px-3 py-2">
+                          <div 
+                            class="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"
+                            :class="groupIndex === 1 ? 'w-16' : 'w-20'"
+                            :style="{ animationDelay: `${groupIndex * 50}ms` }"
+                          ></div>
+                        </div>
+                        
+                        <!-- Items du groupe -->
+                        <div class="w-full space-y-0.5">
+                          <div 
+                            v-for="itemIndex in (groupIndex === 1 ? 3 : 4)" 
+                            :key="`item-${groupIndex}-${itemIndex}`"
+                            class="flex items-center gap-3 px-3 py-2 animate-pulse"
+                            :style="{ animationDelay: `${(groupIndex * 100) + (itemIndex * 30)}ms` }"
+                          >
+                            <div class="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                            <div 
+                              class="h-3.5 bg-gray-200 dark:bg-gray-700 rounded"
+                              :class="[
+                                itemIndex === 1 ? 'w-32' : 
+                                itemIndex === 2 ? 'w-40' : 
+                                itemIndex === 3 ? 'w-28' : 
+                                'w-36'
+                              ]"
+                            ></div>
+                          </div>
+                        </div>
                       </div>
-                    </template>
-                  </UNavigationMenu>
+                    </div>
+                  </template>
+
+                  <!-- Conversations réelles avec animation d'apparition -->
+                  <template v-else>
+                    <div class="conversations-container">
+                      <UNavigationMenu
+                        :items="items"
+                        :collapsed="collapsed"
+                        orientation="vertical"
+                        :ui="{ 
+                          link: 'overflow-hidden cursor-pointer font-light w-full px-3 group',
+                          wrapper: 'w-full',
+                          list: 'w-full space-y-0.5'
+                        }"
+                        class="w-full"
+                      >
+                        <template #chat-trailing="{ item }">
+                          <div class="flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <UButton
+                              icon="i-lucide-x"
+                              color="neutral"
+                              variant="ghost"
+                              size="xs"
+                              class="text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 p-0.5 cursor-pointer"
+                              tabindex="-1"
+                              @click.stop.prevent="deleteChat((item as any).id)"
+                            />
+                          </div>
+                        </template>
+                      </UNavigationMenu>
+                    </div>
+                  </template>
                 </div>
               </div>
 
@@ -430,4 +496,34 @@ function toggleSidebar(e: MouseEvent) {
 :deep(.u-dashboard-sidebar-collapse) {
   cursor: pointer !important;
 }
+
+/* Animation d'apparition pour les conversations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.conversations-container :deep(.u-navigation-menu li) {
+  opacity: 0;
+  animation: fade-in-up 0.35s ease-out forwards;
+}
+
+/* Délais progressifs pour chaque conversation */
+.conversations-container :deep(.u-navigation-menu li:nth-child(1)) { animation-delay: 0.03s; }
+.conversations-container :deep(.u-navigation-menu li:nth-child(2)) { animation-delay: 0.06s; }
+.conversations-container :deep(.u-navigation-menu li:nth-child(3)) { animation-delay: 0.09s; }
+.conversations-container :deep(.u-navigation-menu li:nth-child(4)) { animation-delay: 0.12s; }
+.conversations-container :deep(.u-navigation-menu li:nth-child(5)) { animation-delay: 0.15s; }
+.conversations-container :deep(.u-navigation-menu li:nth-child(6)) { animation-delay: 0.18s; }
+.conversations-container :deep(.u-navigation-menu li:nth-child(7)) { animation-delay: 0.21s; }
+.conversations-container :deep(.u-navigation-menu li:nth-child(8)) { animation-delay: 0.24s; }
+.conversations-container :deep(.u-navigation-menu li:nth-child(9)) { animation-delay: 0.27s; }
+.conversations-container :deep(.u-navigation-menu li:nth-child(10)) { animation-delay: 0.30s; }
+.conversations-container :deep(.u-navigation-menu li:nth-child(n+11)) { animation-delay: 0.33s; }
 </style>
