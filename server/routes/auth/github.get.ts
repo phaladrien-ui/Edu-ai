@@ -1,40 +1,32 @@
-import { db, schema } from 'hub:db'
-import { and, eq } from 'drizzle-orm'
-
+// server/routes/auth/github.get.ts
 export default defineOAuthGitHubEventHandler({
-  async onSuccess(event, { user: ghUser }) {
-    const session = await getUserSession(event)
-
-    let user = await db.query.users.findFirst({
-      where: () => and(
-        eq(schema.users.provider, 'github'),
-        eq(schema.users.providerId, ghUser.id.toString())
-      )
+  config: {
+    emailRequired: true,
+  },
+  async onSuccess(event, { user: githubUser }) {
+    const dbUser = await findOrCreateOAuthUser({
+      email: githubUser.email,
+      name: githubUser.name || githubUser.login,
+      avatar: githubUser.avatar_url,
+      provider: 'github',
+      providerId: String(githubUser.id),
     })
-    if (!user) {
-      [user] = await db.insert(schema.users).values({
-        id: session.id,
-        name: ghUser.name || '',
-        email: ghUser.email || '',
-        avatar: ghUser.avatar_url || '',
-        username: ghUser.login,
-        provider: 'github',
-        providerId: ghUser.id.toString()
-      }).returning()
-    } else {
-      // Assign anonymous chats with session id to user
-      await db.update(schema.chats).set({
-        userId: user.id
-      }).where(eq(schema.chats.userId, session.id))
-    }
 
-    await setUserSession(event, { user })
+    await setUserSession(event, {
+      user: {
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name,
+        avatar: dbUser.avatar,
+        provider: 'github',
+      },
+      loggedInAt: Date.now(),
+    })
 
     return sendRedirect(event, '/')
   },
-  // Optional, will return a json error and 401 status code by default
   onError(event, error) {
     console.error('GitHub OAuth error:', error)
-    return sendRedirect(event, '/')
-  }
+    return sendRedirect(event, '/login?error=github')
+  },
 })

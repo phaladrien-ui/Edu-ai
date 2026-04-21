@@ -4,7 +4,13 @@ import { LazyModalConfirm } from '#components'
 const route = useRoute()
 const toast = useToast()
 const overlay = useOverlay()
-const { loggedIn, openInPopup } = useUserSession()
+const { loggedIn, openInPopup, fetch: refreshSession } = useUserSession()
+
+// Surveiller les changements de route pour rafraîchir la session après OAuth
+watch(() => route.query, async (query) => {
+  if (query.error || route.path === '/login') return
+  await refreshSession()
+}, { immediate: true })
 
 const open = ref(false)
 const conversationsLoading = ref(true)
@@ -321,34 +327,72 @@ const skeletonCount = 6
         </div>
       </template>
 
+      <!-- FOOTER AMÉLIORÉ -->
       <template #footer="{ collapsed }">
         <div class="w-full border-t border-gray-100 dark:border-gray-800">
+          <!-- Utilisateur connecté : menu profil -->
           <UserMenu v-if="loggedIn" :collapsed="collapsed" class="cursor-pointer w-full" />
-          <div v-if="!loggedIn" class="w-full px-3 py-2">
-            <UTooltip 
-              v-if="collapsed" 
-              text="Connexion GitHub" 
-              side="right"
-              class="w-full"
-            >
+          
+          <!-- Non connecté : boutons de connexion -->
+          <div v-else class="w-full px-3 py-2 space-y-1">
+            <!-- GitHub -->
+            <UTooltip v-if="collapsed" text="Connexion GitHub" side="right" class="w-full">
               <UButton
                 icon="i-simple-icons-github"
                 color="neutral"
                 variant="ghost"
-                class="w-full cursor-pointer hover:scale-105 transition-transform justify-center"
+                class="w-full cursor-pointer justify-center"
                 square
                 @click.stop="openInPopup('/auth/github')"
               />
             </UTooltip>
             <UButton
               v-else
-              label="Connexion GitHub"
+              label="GitHub"
               icon="i-simple-icons-github"
               color="neutral"
               variant="ghost"
               block
               class="cursor-pointer font-light w-full px-3 justify-start"
               @click.stop="openInPopup('/auth/github')"
+            />
+
+            <!-- Google -->
+            <UTooltip v-if="collapsed" text="Connexion Google" side="right" class="w-full">
+              <UButton
+                icon="i-simple-icons-google"
+                color="neutral"
+                variant="ghost"
+                class="w-full cursor-pointer justify-center"
+                square
+                @click.stop="openInPopup('/auth/google')"
+              />
+            </UTooltip>
+            <UButton
+              v-else
+              label="Google"
+              icon="i-simple-icons-google"
+              color="neutral"
+              variant="ghost"
+              block
+              class="cursor-pointer font-light w-full px-3 justify-start"
+              @click.stop="openInPopup('/auth/google')"
+            />
+
+            <UDivider label="ou" class="my-1" />
+
+            <!-- Bouton Se connecter (email/mdp) -->
+            <UButton
+              :label="collapsed ? '' : 'Se connecter'"
+              icon="i-lucide-log-in"
+              color="primary"
+              variant="soft"
+              block
+              :square="collapsed"
+              to="/login"
+              class="cursor-pointer font-light w-full"
+              :class="collapsed ? 'justify-center' : 'justify-start px-3'"
+              @click.stop="open = false"
             />
           </div>
         </div>

@@ -1,10 +1,16 @@
 <script setup lang="ts">
+definePageMeta({
+  middleware: ['auth'],
+  requiresAuth: true,  // ← Déclenche la modale si non connecté
+})
+
 const input = ref('')
 const loading = ref(false)
 const suggestionsLoading = ref(true)
 const chatId = crypto.randomUUID()
 
 const { model } = useModels()
+const { user } = useUserSession()  // ← Ajouté pour l'affichage
 
 const {
   dropzoneRef,
@@ -95,12 +101,19 @@ const quickChats = [
     <template #body>
       <DragDropOverlay :show="isDragging" />
       <UContainer ref="dropzoneRef" class="flex-1 flex flex-col justify-center gap-5 sm:gap-7 py-8">
-        <!-- Titre légèrement plus épais -->
+        <!-- Message de bienvenue si connecté -->
+        <div v-if="user" class="px-4 sm:px-0 mb-2">
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Bon retour, <span class="font-medium text-gray-700 dark:text-gray-300">{{ user.name || user.email }}</span> !
+          </p>
+        </div>
+
+        <!-- Titre -->
         <h1 class="text-3xl sm:text-4xl text-highlighted px-4 sm:px-0 text-center sm:text-left tracking-tight" style="font-weight: 350;">
           Que voulez-vous apprendre aujourd'hui ?
         </h1>
 
-        <!-- UChatPrompt avec bordure plus affirmée -->
+        <!-- UChatPrompt -->
         <UChatPrompt
           v-model="input"
           :status="loading ? 'streaming' : 'ready'"
@@ -147,7 +160,6 @@ const quickChats = [
 
         <!-- Suggestions -->
         <div class="flex flex-col gap-3 mt-4">
-          <!-- Skeleton loaders -->
           <template v-if="suggestionsLoading">
             <div 
               v-for="i in 5" 
@@ -169,7 +181,6 @@ const quickChats = [
             </div>
           </template>
 
-          <!-- Suggestions réelles -->
           <template v-else>
             <button
               v-for="(quickChat, index) in quickChats"
@@ -179,7 +190,6 @@ const quickChats = [
               @click="createChat(quickChat.label)"
             >
               <span class="text-gray-400 dark:text-gray-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors duration-200 text-lg">→</span>
-              <!-- Texte noir en thème clair, garde le même poids (font-normal) -->
               <span class="text-gray-900 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 text-sm sm:text-base font-normal tracking-wide">
                 {{ quickChat.label }}
               </span>
@@ -192,7 +202,6 @@ const quickChats = [
 </template>
 
 <style scoped>
-/* Force le curseur pointer sur le bouton envoyer */
 .submit-button-cursor :deep(.u-chat-prompt-submit),
 .submit-button-cursor :deep(button[type="submit"]),
 :deep(.u-chat-prompt-submit),
@@ -200,19 +209,16 @@ const quickChats = [
   cursor: pointer !important;
 }
 
-/* Curseur pointer pour tous les boutons */
 button,
 [role="button"],
 .cursor-pointer {
   cursor: pointer !important;
 }
 
-/* Curseur pointer pour le bouton d'envoi spécifiquement */
 :deep(.u-chat-prompt-submit:hover) {
   cursor: pointer !important;
 }
 
-/* Animation d'apparition des suggestions */
 @keyframes fade-in-up {
   from {
     opacity: 0;
@@ -228,7 +234,6 @@ button,
   animation: fade-in-up 0.4s ease-out forwards;
 }
 
-/* Bordure plus affirmée pour le composant UChatPrompt */
 .chat-prompt-border :deep(.u-chat-prompt) {
   border-width: 1.5px !important;
   border-color: #d1d5db !important;
@@ -238,7 +243,6 @@ button,
   border-color: #4b5563 !important;
 }
 
-/* Alternative via le ui wrapper */
 :deep(.u-chat-prompt) {
   border-width: 1.5px !important;
   border-color: #d1d5db !important;

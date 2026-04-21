@@ -1,13 +1,15 @@
-// auth.d.ts
+// shared/types/auth.d.ts
 declare module '#auth-utils' {
   interface User {
     id: string
-    name: string
     email: string
+    name: string
     avatar: string
-    username: string
-    provider: 'github'
-    providerId: number
+    provider: 'github' | 'google' | 'microsoft' | 'credentials'
+  }
+
+  interface UserSession {
+    loggedInAt: number
   }
 }
 
