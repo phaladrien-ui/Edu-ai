@@ -15,6 +15,10 @@ const route = useRoute()
 const toast = useToast()
 const clipboard = useClipboard()
 const { model } = useModels()
+const { loggedIn } = useUserSession()
+
+// Modale simple avec v-model
+const showLoginModal = ref(false)
 
 function getFileName(url: string): string {
   try {
@@ -74,6 +78,12 @@ const chat = new Chat({
 
 async function handleSubmit(e: Event) {
   e.preventDefault()
+  
+  if (!loggedIn.value) {
+    showLoginModal.value = true
+    return
+  }
+  
   if (input.value.trim() && !isUploading.value) {
     chat.sendMessage({
       text: input.value,
@@ -197,4 +207,41 @@ onMounted(() => {
       </UContainer>
     </template>
   </UDashboardPanel>
+
+  <!-- Modale de connexion - EN DEHORS DU PANEL -->
+  <UModal v-model:open="showLoginModal">
+    <template #content>
+      <div class="p-6 text-center">
+        <div class="mx-auto w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
+          <UIcon name="i-lucide-log-in" class="w-7 h-7 text-blue-600 dark:text-blue-400" />
+        </div>
+        
+        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          Connexion requise
+        </h3>
+        
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+          Connectez-vous pour envoyer des messages et accéder à toutes les fonctionnalités.
+        </p>
+        
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            @click="showLoginModal = false"
+          >
+            Annuler
+          </UButton>
+          
+          <UButton
+            color="primary"
+            icon="i-lucide-log-in"
+            @click="navigateTo('/login')"
+          >
+            Se connecter
+          </UButton>
+        </div>
+      </div>
+    </template>
+  </UModal>
 </template>

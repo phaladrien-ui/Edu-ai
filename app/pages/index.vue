@@ -1,13 +1,14 @@
 <script setup lang="ts">
 definePageMeta({
   middleware: ['auth'],
-  requiresAuth: true,  // ← Déclenche la modale si non connecté
+  requiresAuth: true,
 })
 
 const input = ref('')
 const loading = ref(false)
 const suggestionsLoading = ref(true)
 const chatId = crypto.randomUUID()
+const showLoginModal = ref(false)
 
 const { model } = useModels()
 const { user, loggedIn } = useUserSession()
@@ -24,7 +25,6 @@ const {
   clearFiles
 } = useFileUploadWithStatus(chatId)
 
-// Simuler un chargement des suggestions
 onMounted(() => {
   setTimeout(() => {
     suggestionsLoading.value = false
@@ -32,27 +32,8 @@ onMounted(() => {
 })
 
 async function createChat(prompt: string) {
-  // Vérifier si l'utilisateur est connecté
   if (!loggedIn.value) {
-    toast.add({
-      title: 'Connexion requise',
-      description: 'Connectez-vous pour envoyer des messages',
-      icon: 'i-lucide-log-in',
-      color: 'amber',
-      timeout: 0,
-      actions: [{
-        label: 'Se connecter',
-        to: '/login',
-        variant: 'solid',
-        color: 'primary',
-        icon: 'i-lucide-log-in'
-      }, {
-        label: 'Annuler',
-        variant: 'ghost',
-        color: 'neutral',
-        onClick: () => {}
-      }]
-    })
+    showLoginModal.value = true
     return
   }
 
@@ -86,34 +67,13 @@ async function onSubmit() {
 }
 
 const quickChats = [
-  {
-    label: 'Comment fonctionne l\'électromagnétisme?',
-    icon: 'i-logos-lightning'
-  },
-  {
-    label: 'Quels sont les principes de la physique optique?',
-    icon: 'i-logos-lightbulb'
-  },
-  {
-    label: 'Comment interpréter des données statistiques?',
-    icon: 'i-logos-bar-chart'
-  },
-  {
-    label: 'Comment calculer des probabilités simples?',
-    icon: 'i-logos-dice'
-  },
-  {
-    label: 'Comment résoudre un problème en algèbre linéaire?',
-    icon: 'i-logos-math'
-  },
-  {
-    label: 'Quelles sont les bases de la chimie organique?',
-    icon: 'i-logos-flask'
-  },
-  {
-    label: 'Comment aborder l\'analyse mathématique?',
-    icon: 'i-logos-calculator'
-  }
+  { label: 'Comment fonctionne l\'électromagnétisme?', icon: 'i-logos-lightning' },
+  { label: 'Quels sont les principes de la physique optique?', icon: 'i-logos-lightbulb' },
+  { label: 'Comment interpréter des données statistiques?', icon: 'i-logos-bar-chart' },
+  { label: 'Comment calculer des probabilités simples?', icon: 'i-logos-dice' },
+  { label: 'Comment résoudre un problème en algèbre linéaire?', icon: 'i-logos-math' },
+  { label: 'Quelles sont les bases de la chimie organique?', icon: 'i-logos-flask' },
+  { label: 'Comment aborder l\'analyse mathématique?', icon: 'i-logos-calculator' }
 ]
 </script>
 
@@ -224,6 +184,43 @@ const quickChats = [
       </UContainer>
     </template>
   </UDashboardPanel>
+
+  <!-- Modale de connexion - EN DEHORS DU PANEL -->
+  <UModal v-model:open="showLoginModal">
+    <template #content>
+      <div class="p-6 text-center">
+        <div class="mx-auto w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
+          <UIcon name="i-lucide-log-in" class="w-7 h-7 text-blue-600 dark:text-blue-400" />
+        </div>
+        
+        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          Connexion requise
+        </h3>
+        
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+          Connectez-vous pour envoyer des messages et accéder à toutes les fonctionnalités.
+        </p>
+        
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            @click="showLoginModal = false"
+          >
+            Annuler
+          </UButton>
+          
+          <UButton
+            color="primary"
+            icon="i-lucide-log-in"
+            @click="navigateTo('/login')"
+          >
+            Se connecter
+          </UButton>
+        </div>
+      </div>
+    </template>
+  </UModal>
 </template>
 
 <style scoped>
