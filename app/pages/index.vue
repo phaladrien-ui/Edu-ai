@@ -86,19 +86,16 @@ const quickChats = [
     <template #body>
       <DragDropOverlay :show="isDragging" />
       <UContainer ref="dropzoneRef" class="flex-1 flex flex-col justify-center gap-5 sm:gap-7 py-8">
-        <!-- Message de bienvenue si connecté -->
         <div v-if="user" class="px-4 sm:px-0 mb-2">
           <p class="text-sm text-gray-500 dark:text-gray-400">
             Bon retour, <span class="font-medium text-gray-700 dark:text-gray-300">{{ user.name || user.email }}</span> !
           </p>
         </div>
 
-        <!-- Titre -->
         <h1 class="text-3xl sm:text-4xl text-highlighted px-4 sm:px-0 text-center sm:text-left tracking-tight" style="font-weight: 350;">
           Que voulez-vous apprendre aujourd'hui ?
         </h1>
 
-        <!-- UChatPrompt -->
         <UChatPrompt
           v-model="input"
           :status="loading ? 'streaming' : 'ready'"
@@ -143,7 +140,6 @@ const quickChats = [
           </template>
         </UChatPrompt>
 
-        <!-- Suggestions -->
         <div class="flex flex-col gap-3 mt-4">
           <template v-if="suggestionsLoading">
             <div 
@@ -185,67 +181,41 @@ const quickChats = [
     </template>
   </UDashboardPanel>
 
-  <!-- Modale de connexion améliorée -->
+  <!-- Modale de connexion -->
   <UModal v-model:open="showLoginModal">
     <template #content>
       <div class="p-6 sm:p-8 max-w-md mx-auto relative">
-        <!-- Logo et en-tête -->
         <div class="text-center mb-6">
-          <div class="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-            <span class="text-white text-2xl font-bold">E</span>
+          <div class="mx-auto w-12 h-12 bg-black dark:bg-white rounded-xl flex items-center justify-center mb-4">
+            <span class="text-white dark:text-black text-xl font-semibold">E</span>
           </div>
-          <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-            Rejoignez EduAI
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Se connecter
           </h2>
           <p class="text-sm text-gray-500 dark:text-gray-400">
-            Connectez-vous pour débloquer toutes les fonctionnalités
+            Accédez à votre espace personnalisé
           </p>
         </div>
 
-        <!-- Avantages -->
-        <div class="grid grid-cols-3 gap-2 mb-6">
-          <div class="text-center">
-            <div class="w-8 h-8 mx-auto bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-1">
-              <UIcon name="i-lucide-message-circle" class="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <span class="text-xs text-gray-600 dark:text-gray-400">Chat illimité</span>
-          </div>
-          <div class="text-center">
-            <div class="w-8 h-8 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-1">
-              <UIcon name="i-lucide-history" class="w-4 h-4 text-green-600 dark:text-green-400" />
-            </div>
-            <span class="text-xs text-gray-600 dark:text-gray-400">Historique</span>
-          </div>
-          <div class="text-center">
-            <div class="w-8 h-8 mx-auto bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-1">
-              <UIcon name="i-lucide-sparkles" class="w-4 h-4 text-purple-600 dark:text-purple-400" />
-            </div>
-            <span class="text-xs text-gray-600 dark:text-gray-400">IA avancée</span>
-          </div>
-        </div>
-
-        <!-- Boutons OAuth -->
         <div class="space-y-3">
-          <!-- Google -->
           <UButton
             color="neutral"
             variant="outline"
             block
             size="lg"
-            class="justify-center gap-3 font-medium"
+            class="justify-center gap-3 font-normal"
             @click="navigateTo('/auth/google')"
           >
             <UIcon name="i-simple-icons-google" class="w-5 h-5" />
             Continuer avec Google
           </UButton>
 
-          <!-- GitHub -->
           <UButton
             color="neutral"
             variant="outline"
             block
             size="lg"
-            class="justify-center gap-3 font-medium"
+            class="justify-center gap-3 font-normal"
             @click="navigateTo('/auth/github')"
           >
             <UIcon name="i-simple-icons-github" class="w-5 h-5" />
@@ -253,7 +223,6 @@ const quickChats = [
           </UButton>
         </div>
 
-        <!-- Séparateur -->
         <div class="relative my-6">
           <div class="absolute inset-0 flex items-center">
             <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
@@ -263,15 +232,13 @@ const quickChats = [
           </div>
         </div>
 
-        <!-- Boutons d'action -->
         <div class="space-y-3">
           <UButton
             to="/login"
             color="primary"
             block
             size="lg"
-            icon="i-lucide-log-in"
-            class="justify-center font-medium"
+            class="justify-center font-normal"
           >
             Se connecter avec email
           </UButton>
@@ -279,12 +246,11 @@ const quickChats = [
           <p class="text-center text-sm text-gray-500 dark:text-gray-400">
             Pas encore de compte ?
             <NuxtLink to="/register" class="text-blue-600 dark:text-blue-400 hover:underline font-medium" @click="showLoginModal = false">
-              S'inscrire gratuitement
+              Créer un compte
             </NuxtLink>
           </p>
         </div>
 
-        <!-- Fermer -->
         <button
           class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           @click="showLoginModal = false"
