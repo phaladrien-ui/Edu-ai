@@ -14,19 +14,15 @@ watch(() => route.query, async (query) => {
 
 // Forcer le rafraîchissement complet après connexion/déconnexion
 watch(loggedIn, async (newValue, oldValue) => {
-  // Éviter les déclenchements inutiles au premier chargement
   if (oldValue === undefined) return
   
   if (newValue && !oldValue) {
-    // L'utilisateur vient de se connecter
     await refreshSession()
     await refreshChats()
-    // Recharger complètement la page pour mettre à jour toute l'interface
     window.location.reload()
   }
   
   if (!newValue && oldValue) {
-    // L'utilisateur vient de se déconnecter
     await navigateTo('/login')
   }
 })
@@ -34,12 +30,22 @@ watch(loggedIn, async (newValue, oldValue) => {
 const open = ref(false)
 const conversationsLoading = ref(true)
 
-const mainNavItems = [
-  { label: 'ChatMe', value: 'chat', to: '/', icon: 'i-lucide-message-circle' },
-  { label: 'Cours', value: 'courses', to: '/courses', icon: 'i-lucide-graduation-cap' },
-  { label: 'Outils', value: 'tools', to: '/tools', icon: 'i-lucide-wrench' },
-  { label: 'Progression', value: 'progress', to: '/progress', icon: 'i-lucide-trending-up' },
-]
+// Navigation items - "Progression" conditionnel
+const mainNavItems = computed(() => {
+  const items = [
+    { label: 'ChatMe', value: 'chat', to: '/', icon: 'i-lucide-message-circle' },
+    { label: 'Cours', value: 'courses', to: '/courses', icon: 'i-lucide-graduation-cap' },
+    { label: 'Bourses', value: 'scholarships', to: '/scholarships', icon: 'i-lucide-trophy' },
+    { label: 'Labs', value: 'labs', to: '/labs', icon: 'i-lucide-flask-conical' },
+  ]
+  
+  // Ajouter Progression uniquement si connecté
+  if (loggedIn.value) {
+    items.push({ label: 'Progression', value: 'progress', to: '/progress', icon: 'i-lucide-trending-up' })
+  }
+  
+  return items
+})
 
 const deleteModal = overlay.create(LazyModalConfirm, {
   props: {
@@ -59,7 +65,6 @@ const { data: chats, refresh: refreshChats } = await useFetch<Chat[]>('/api/chat
   }))
 })
 
-// Simuler un chargement des conversations
 onMounted(() => {
   setTimeout(() => {
     conversationsLoading.value = false
@@ -134,7 +139,6 @@ function toggleSidebar(e: MouseEvent) {
   }
 }
 
-// Nombre de skeletons à afficher
 const skeletonCount = 6
 </script>
 
@@ -162,8 +166,13 @@ const skeletonCount = 6
               <span v-if="!collapsed" class="text-xl font-light tracking-tighter text-gray-800 dark:text-gray-100">EduAI</span>
             </NuxtLink>
 
-            <div v-if="!collapsed" class="flex items-center gap-1.5 ml-auto">
+            <!-- Icônes de recherche et collapse - UNIQUEMENT si connecté -->
+            <div v-if="!collapsed && loggedIn" class="flex items-center gap-1.5 ml-auto">
               <UDashboardSearchButton collapsed class="cursor-pointer" />
+              <UDashboardSidebarCollapse class="cursor-pointer" />
+            </div>
+            <!-- Juste le collapse si non connecté -->
+            <div v-if="!collapsed && !loggedIn" class="flex items-center gap-1.5 ml-auto">
               <UDashboardSidebarCollapse class="cursor-pointer" />
             </div>
           </div>
@@ -173,7 +182,6 @@ const skeletonCount = 6
       <template #default="{ collapsed }">
         <div class="flex flex-col w-full h-full sidebar-wrapper">
           
-          <!-- Zone de scroll avec scrollbar invisible -->
           <div class="flex-1 overflow-y-auto sidebar-scrollport">
             <div class="flex flex-col w-full">
               
@@ -237,10 +245,15 @@ const skeletonCount = 6
               </div>
 
               <!-- Actions collapsed -->
-              <div v-if="collapsed" class="w-full px-3 space-y-0.5">
+              <div v-if="collapsed && loggedIn" class="w-full px-3 space-y-0.5">
                 <UTooltip text="Rechercher" side="right" class="w-full">
                   <UDashboardSearchButton collapsed class="cursor-pointer hover:scale-105 transition-transform w-full justify-center" />
                 </UTooltip>
+                <UTooltip :text="open ? 'Fermer' : 'Ouvrir'" side="right" class="w-full">
+                  <UDashboardSidebarCollapse class="cursor-pointer hover:scale-105 transition-transform w-full justify-center" />
+                </UTooltip>
+              </div>
+              <div v-if="collapsed && !loggedIn" class="w-full px-3">
                 <UTooltip :text="open ? 'Fermer' : 'Ouvrir'" side="right" class="w-full">
                   <UDashboardSidebarCollapse class="cursor-pointer hover:scale-105 transition-transform w-full justify-center" />
                 </UTooltip>
@@ -253,16 +266,13 @@ const skeletonCount = 6
                 </h3>
 
                 <div class="w-full">
-                  <!-- Skeleton loaders pour les conversations -->
                   <template v-if="conversationsLoading">
                     <div class="w-full space-y-1">
-                      <!-- Groupes avec labels -->
                       <div 
                         v-for="groupIndex in 2" 
                         :key="`group-${groupIndex}`"
                         class="w-full"
                       >
-                        <!-- Label du groupe -->
                         <div class="px-3 py-2">
                           <div 
                             class="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"
@@ -271,7 +281,6 @@ const skeletonCount = 6
                           ></div>
                         </div>
                         
-                        <!-- Items du groupe -->
                         <div class="w-full space-y-0.5">
                           <div 
                             v-for="itemIndex in (groupIndex === 1 ? 3 : 4)" 
@@ -295,7 +304,6 @@ const skeletonCount = 6
                     </div>
                   </template>
 
-                  <!-- Conversations réelles avec animation d'apparition -->
                   <template v-else>
                     <div class="conversations-container">
                       <UNavigationMenu
@@ -328,7 +336,6 @@ const skeletonCount = 6
                 </div>
               </div>
 
-              <!-- Espaceur en bas -->
               <div class="h-4"></div>
 
             </div>
@@ -340,10 +347,8 @@ const skeletonCount = 6
       <!-- FOOTER AVEC SVG NATIFS -->
       <template #footer="{ collapsed }">
         <div class="w-full border-t border-gray-100 dark:border-gray-800">
-          <!-- Utilisateur connecté : menu profil -->
           <UserMenu v-if="loggedIn" :collapsed="collapsed" class="cursor-pointer w-full" />
           
-          <!-- Non connecté : boutons de connexion -->
           <div v-else class="w-full px-3 py-2 space-y-1">
             <!-- GitHub -->
             <UTooltip v-if="collapsed" text="Connexion GitHub" side="right" class="w-full">
@@ -420,7 +425,6 @@ const skeletonCount = 6
               </div>
             </div>
 
-            <!-- Bouton Se connecter (email/mdp) -->
             <UButton
               :label="collapsed ? '' : 'Se connecter'"
               icon="i-lucide-log-in"
@@ -462,13 +466,10 @@ const skeletonCount = 6
   flex-direction: column;
 }
 
-/* SCROLLBAR INVISIBLE PAR DÉFAUT, VISIBLE AU SURVOL */
 .sidebar-scrollport {
   cursor: ew-resize;
   width: 100% !important;
   overflow-y: scroll !important;
-  
-  /* Firefox */
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
   transition: scrollbar-color 0.3s ease;
@@ -478,7 +479,6 @@ const skeletonCount = 6
   scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
 }
 
-/* Chrome, Safari, Edge */
 .sidebar-scrollport::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -504,7 +504,6 @@ const skeletonCount = 6
   background-color: rgba(156, 163, 175, 0.6);
 }
 
-/* Dark mode */
 .dark .sidebar-scrollport:hover {
   scrollbar-color: rgba(75, 85, 99, 0.4) transparent;
 }
@@ -517,7 +516,6 @@ const skeletonCount = 6
   background-color: rgba(75, 85, 99, 0.6);
 }
 
-/* FORCE TOUS LES ÉLÉMENTS À 100% DE LARGEUR */
 .sidebar-scrollport,
 .sidebar-scrollport > div,
 .sidebar-scrollport > div > div,
@@ -531,7 +529,6 @@ const skeletonCount = 6
   box-sizing: border-box !important;
 }
 
-/* Padding uniforme pour TOUS les éléments */
 .sidebar-scrollport :deep(.u-navigation-menu a),
 .sidebar-scrollport :deep(.u-navigation-menu [role="menuitem"]),
 .sidebar-scrollport :deep(.u-button) {
@@ -540,14 +537,12 @@ const skeletonCount = 6
   justify-content: flex-start !important;
 }
 
-/* Centrage pour les boutons square */
 .sidebar-scrollport :deep(.u-button.square) {
   justify-content: center !important;
   padding-left: 0 !important;
   padding-right: 0 !important;
 }
 
-/* Suppression des marges */
 .sidebar-scrollport :deep(ul),
 .sidebar-scrollport :deep(li) {
   margin: 0 !important;
@@ -555,7 +550,6 @@ const skeletonCount = 6
   list-style: none !important;
 }
 
-/* Curseur pointer pour TOUS les éléments interactifs */
 .sidebar-scrollport button,
 .sidebar-scrollport a,
 .sidebar-scrollport [role="button"],
@@ -568,19 +562,16 @@ const skeletonCount = 6
   cursor: pointer !important;
 }
 
-/* Curseur ew-resize pour les éléments non interactifs */
 .sidebar-scrollport h3,
 .sidebar-scrollport .text-muted:not(button):not(a):not([role="button"]) {
   cursor: ew-resize !important;
 }
 
-/* Force le curseur pointer sur les icônes de recherche et collapse dans le header */
 :deep(.u-dashboard-search-button),
 :deep(.u-dashboard-sidebar-collapse) {
   cursor: pointer !important;
 }
 
-/* Animation d'apparition pour les conversations */
 @keyframes fade-in-up {
   from {
     opacity: 0;
@@ -597,7 +588,6 @@ const skeletonCount = 6
   animation: fade-in-up 0.35s ease-out forwards;
 }
 
-/* Délais progressifs pour chaque conversation */
 .conversations-container :deep(.u-navigation-menu li:nth-child(1)) { animation-delay: 0.03s; }
 .conversations-container :deep(.u-navigation-menu li:nth-child(2)) { animation-delay: 0.06s; }
 .conversations-container :deep(.u-navigation-menu li:nth-child(3)) { animation-delay: 0.09s; }
