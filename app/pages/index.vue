@@ -181,82 +181,107 @@ const quickChats = [
     </template>
   </UDashboardPanel>
 
-  <!-- Modale de connexion -->
+  <!-- Modale premium avec logo -->
   <UModal v-model:open="showLoginModal">
     <template #content>
-      <div class="p-6 sm:p-8 max-w-md mx-auto relative">
-        <div class="text-center mb-6">
-          <div class="mx-auto w-12 h-12 bg-black dark:bg-white rounded-xl flex items-center justify-center mb-4">
-            <span class="text-white dark:text-black text-xl font-semibold">E</span>
-          </div>
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Se connecter
-          </h2>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
-            Accédez à votre espace personnalisé
-          </p>
-        </div>
-
-        <div class="space-y-3">
-          <UButton
-            color="neutral"
-            variant="outline"
-            block
-            size="lg"
-            class="justify-center gap-3 font-normal"
-            @click="navigateTo('/auth/google')"
-          >
-            <UIcon name="i-simple-icons-google" class="w-5 h-5" />
-            Continuer avec Google
-          </UButton>
-
-          <UButton
-            color="neutral"
-            variant="outline"
-            block
-            size="lg"
-            class="justify-center gap-3 font-normal"
-            @click="navigateTo('/auth/github')"
-          >
-            <UIcon name="i-simple-icons-github" class="w-5 h-5" />
-            Continuer avec GitHub
-          </UButton>
-        </div>
-
-        <div class="relative my-6">
-          <div class="absolute inset-0 flex items-center">
-            <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
-          </div>
-          <div class="relative flex justify-center text-sm">
-            <span class="px-3 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">ou</span>
-          </div>
-        </div>
-
-        <div class="space-y-3">
-          <UButton
-            to="/login"
-            color="primary"
-            block
-            size="lg"
-            class="justify-center font-normal"
-          >
-            Se connecter avec email
-          </UButton>
-
-          <p class="text-center text-sm text-gray-500 dark:text-gray-400">
-            Pas encore de compte ?
-            <NuxtLink to="/register" class="text-blue-600 dark:text-blue-400 hover:underline font-medium" @click="showLoginModal = false">
-              Créer un compte
-            </NuxtLink>
-          </p>
-        </div>
-
+      <div class="relative">
         <button
-          class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          class="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200"
           @click="showLoginModal = false"
         >
-          <UIcon name="i-lucide-x" class="w-5 h-5" />
+          <UIcon name="i-lucide-x" class="w-4 h-4" />
         </button>
+
+        <div class="p-8">
+          <!-- Logo -->
+          <div class="text-center mb-8">
+            <img 
+              src="~/assets/logo/logo.png" 
+              alt="EduAI" 
+              class="mx-auto h-16 w-auto mb-5"
+            />
+            <h2 class="text-2xl font-semibold text-gray-900 dark:text-white mb-1.5 tracking-tight">
+              Bienvenue
+            </h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Connectez-vous pour continuer
+            </p>
+          </div>
+
+          <!-- OAuth -->
+          <div class="space-y-3">
+            <a href="/auth/google" class="block w-full">
+              <UButton
+                color="neutral"
+                variant="outline"
+                block
+                size="lg"
+                class="justify-center gap-3 font-normal h-12 rounded-xl border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
+                as="div"
+              >
+                <UIcon name="i-simple-icons-google" class="w-5 h-5" />
+                <span>Google</span>
+              </UButton>
+            </a>
+
+            <a href="/auth/github" class="block w-full">
+              <UButton
+                color="neutral"
+                variant="outline"
+                block
+                size="lg"
+                class="justify-center gap-3 font-normal h-12 rounded-xl border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
+                as="div"
+              >
+                <UIcon name="i-simple-icons-github" class="w-5 h-5" />
+                <span>GitHub</span>
+              </UButton>
+            </a>
+          </div>
+
+          <!-- Séparateur -->
+          <div class="relative my-6">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
+            </div>
+            <div class="relative flex justify-center">
+              <span class="px-4 bg-white dark:bg-gray-900 text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                ou
+              </span>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="space-y-4">
+            <NuxtLink to="/login" @click="showLoginModal = false" class="block w-full">
+              <UButton
+                color="primary"
+                block
+                size="lg"
+                class="justify-center font-medium h-12 rounded-xl shadow-sm shadow-primary-500/20 hover:shadow-md hover:shadow-primary-500/30 transition-all duration-200"
+                as="div"
+              >
+                <UIcon name="i-lucide-mail" class="w-5 h-5 mr-2" />
+                Email
+              </UButton>
+            </NuxtLink>
+
+            <p class="text-center text-sm text-gray-500 dark:text-gray-400">
+              Nouveau ici ? 
+              <NuxtLink to="/register" class="font-medium text-primary-600 dark:text-primary-400 hover:underline underline-offset-2" @click="showLoginModal = false">
+                Créer un compte
+              </NuxtLink>
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <p class="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">
+            En continuant, vous acceptez nos 
+            <a href="#" class="hover:text-gray-600 dark:hover:text-gray-300 underline underline-offset-2">Conditions</a> 
+            et notre 
+            <a href="#" class="hover:text-gray-600 dark:hover:text-gray-300 underline underline-offset-2">Confidentialité</a>
+          </p>
+        </div>
       </div>
     </template>
   </UModal>
