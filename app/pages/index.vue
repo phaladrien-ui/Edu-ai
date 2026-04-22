@@ -10,7 +10,8 @@ const suggestionsLoading = ref(true)
 const chatId = crypto.randomUUID()
 
 const { model } = useModels()
-const { user } = useUserSession()  // ← Ajouté pour l'affichage
+const { user, loggedIn } = useUserSession()
+const toast = useToast()
 
 const {
   dropzoneRef,
@@ -31,6 +32,30 @@ onMounted(() => {
 })
 
 async function createChat(prompt: string) {
+  // Vérifier si l'utilisateur est connecté
+  if (!loggedIn.value) {
+    toast.add({
+      title: 'Connexion requise',
+      description: 'Connectez-vous pour envoyer des messages',
+      icon: 'i-lucide-log-in',
+      color: 'amber',
+      timeout: 0,
+      actions: [{
+        label: 'Se connecter',
+        to: '/login',
+        variant: 'solid',
+        color: 'primary',
+        icon: 'i-lucide-log-in'
+      }, {
+        label: 'Annuler',
+        variant: 'ghost',
+        color: 'neutral',
+        onClick: () => {}
+      }]
+    })
+    return
+  }
+
   input.value = prompt
   loading.value = true
 

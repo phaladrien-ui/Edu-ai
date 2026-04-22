@@ -12,6 +12,25 @@ watch(() => route.query, async (query) => {
   await refreshSession()
 }, { immediate: true })
 
+// Forcer le rafraîchissement complet après connexion/déconnexion
+watch(loggedIn, async (newValue, oldValue) => {
+  // Éviter les déclenchements inutiles au premier chargement
+  if (oldValue === undefined) return
+  
+  if (newValue && !oldValue) {
+    // L'utilisateur vient de se connecter
+    await refreshSession()
+    await refreshChats()
+    // Recharger complètement la page pour mettre à jour toute l'interface
+    window.location.reload()
+  }
+  
+  if (!newValue && oldValue) {
+    // L'utilisateur vient de se déconnecter
+    await navigateTo('/login')
+  }
+})
+
 const open = ref(false)
 const conversationsLoading = ref(true)
 
@@ -52,15 +71,6 @@ onNuxtReady(async () => {
   for (const chat of first10) {
     await $fetch(`/api/chats/${chat.id}`)
   }
-})
-
-watch(loggedIn, () => {
-  refreshChats()
-  open.value = false
-  conversationsLoading.value = true
-  setTimeout(() => {
-    conversationsLoading.value = false
-  }, 400)
 })
 
 const { groups } = useChats(chats)
