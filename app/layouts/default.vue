@@ -4,7 +4,7 @@ import { LazyModalConfirm } from '#components'
 const route = useRoute()
 const toast = useToast()
 const overlay = useOverlay()
-const { loggedIn, openInPopup, fetch: refreshSession } = useUserSession()
+const { loggedIn, openInPopup, fetch: refreshSession, clear } = useUserSession()
 
 // Surveiller les changements de route pour rafraîchir la session après OAuth
 watch(() => route.query, async (query) => {
@@ -137,6 +137,12 @@ function toggleSidebar(e: MouseEvent) {
   if (!isInteractive) {
     open.value = !open.value
   }
+}
+
+// Fonction appelée après déconnexion réussie
+function handleUserLogout() {
+  refreshChats()
+  open.value = false
 }
 
 const skeletonCount = 6
@@ -344,10 +350,10 @@ const skeletonCount = 6
         </div>
       </template>
 
-      <!-- FOOTER AVEC SVG NATIFS -->
+      <!-- FOOTER AVEC USERMENU CORRIGÉ -->
       <template #footer="{ collapsed }">
         <div class="w-full border-t border-gray-100 dark:border-gray-800">
-          <UserMenu v-if="loggedIn" :collapsed="collapsed" class="cursor-pointer w-full" />
+          <UserMenu v-if="loggedIn" :collapsed="collapsed" @logout="handleUserLogout" class="cursor-pointer w-full" />
           
           <div v-else class="w-full px-3 py-2 space-y-1">
             <!-- GitHub -->

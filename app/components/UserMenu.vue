@@ -5,12 +5,21 @@ defineProps<{
   collapsed?: boolean
 }>()
 
-const colorMode = useColorMode()
-const appConfig = useAppConfig()
-const { user, clear } = useUserSession()
+const emit = defineEmits<{
+  logout: []
+}>()
 
-const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
-const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
+const { user, clear } = useUserSession()
+const showLogoutModal = ref(false)
+
+// Fonction de déconnexion avec confirmation
+async function handleLogout() {
+  showLogoutModal.value = false
+  await $fetch('/api/auth/logout', { method: 'POST' })
+  await clear()
+  emit('logout')
+  await navigateTo('/login')
+}
 
 const items = computed<DropdownMenuItem[][]>(() => ([[{
   type: 'label',
@@ -20,150 +29,83 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     alt: user.value?.name || user.value?.username
   }
 }], [{
-  label: 'Thème',
-  icon: 'i-lucide-palette',
-  children: [{
-    label: 'Couleur principale',
-    slot: 'chip',
-    chip: appConfig.ui.colors.primary,
-    content: {
-      align: 'center',
-      collisionPadding: 16
-    },
-    children: colors.map(color => ({
-      label: color,
-      chip: color,
-      slot: 'chip',
-      checked: appConfig.ui.colors.primary === color,
-      type: 'checkbox',
-      onSelect: (e) => {
-        e.preventDefault()
-
-        appConfig.ui.colors.primary = color
-      }
-    }))
-  }, {
-    label: 'Couleur neutre',
-    slot: 'chip',
-    chip: appConfig.ui.colors.neutral === 'neutral' ? 'old-neutral' : appConfig.ui.colors.neutral,
-    content: {
-      align: 'end',
-      collisionPadding: 16
-    },
-    children: neutrals.map(color => ({
-      label: color,
-      chip: color === 'neutral' ? 'old-neutral' : color,
-      slot: 'chip',
-      type: 'checkbox',
-      checked: appConfig.ui.colors.neutral === color,
-      onSelect: (e) => {
-        e.preventDefault()
-
-        appConfig.ui.colors.neutral = color
-      }
-    }))
-  }]
+  label: 'Paramètres',
+  icon: 'i-lucide-settings',
+  to: '/settings'
 }, {
-  label: 'Apparence',
-  icon: 'i-lucide-sun-moon',
-  children: [{
-    label: 'Clair',
-    icon: 'i-lucide-sun',
-    type: 'checkbox',
-    checked: colorMode.value === 'light',
-    onSelect(e: Event) {
-      e.preventDefault()
-
-      colorMode.preference = 'light'
-    }
-  }, {
-    label: 'Sombre',
-    icon: 'i-lucide-moon',
-    type: 'checkbox',
-    checked: colorMode.value === 'dark',
-    onUpdateChecked(checked: boolean) {
-      if (checked) {
-        colorMode.preference = 'dark'
-      }
-    },
-    onSelect(e: Event) {
-      e.preventDefault()
-    }
-  }]
-}], [{
-  label: 'Modèles d\'interface',
-  icon: 'i-lucide-layout-template',
-  children: [{
-    label: 'Chat Éducatif',
-    to: '/',
-    color: 'primary',
-    checked: true,
-    type: 'checkbox',
-    description: 'Interface conversationnelle standard'
-  }, {
-    label: 'Mode Codeur',
-    to: '/coder',
-    description: 'Optimisé pour le développement'
-  }, {
-    label: 'Mode Présentation',
-    to: '/presentation',
-    description: 'Pour enseignements et démos'
-  }]
-}], [{
-  label: 'Documentation EduAI',
-  icon: 'i-lucide-book-open',
-  to: '/docs',
-  target: '_blank'
-}, {
-  label: 'Dépôt GitHub',
-  icon: 'i-simple-icons-github',
-  to: 'https://github.com/eduai-research/chatme',
-  target: '_blank'
-}], [{
   label: 'Se déconnecter',
   icon: 'i-lucide-log-out',
-  onSelect() {
-    clear()
-    navigateTo('/')
+  color: 'error' as const,
+  onSelect: () => {
+    showLogoutModal.value = true
   }
 }]]))
 </script>
 
 <template>
-  <UDropdownMenu
-    :items="items"
-    :content="{ align: 'center', collisionPadding: 12 }"
-    :ui="{ content: collapsed ? 'w-48' : 'w-(--reka-dropdown-menu-trigger-width)' }"
-  >
-    <UButton
-      v-bind="{
-        label: collapsed ? undefined : (user?.name || user?.username),
-        trailingIcon: collapsed ? undefined : 'i-lucide-chevrons-up-down'
-      }"
-      :avatar="{
-        src: user?.avatar || undefined,
-        alt: user?.name || user?.username
-      }"
-      color="neutral"
-      variant="ghost"
-      block
-      :square="collapsed"
-      class="data-[state=open]:bg-elevated"
-      :ui="{
-        trailingIcon: 'text-dimmed'
-      }"
-    />
+  <div class="w-full">
+    <UDropdownMenu
+      :items="items"
+      :content="{ align: 'center', collisionPadding: 12 }"
+      :ui="{ content: collapsed ? 'w-48' : 'w-56' }"
+    >
+      <UButton
+        v-bind="{
+          label: collapsed ? undefined : (user?.name || user?.username),
+          trailingIcon: collapsed ? undefined : 'i-lucide-chevrons-up-down'
+        }"
+        :avatar="{
+          src: user?.avatar || undefined,
+          alt: user?.name || user?.username
+        }"
+        color="neutral"
+        variant="ghost"
+        block
+        :square="collapsed"
+        class="data-[state=open]:bg-elevated cursor-pointer"
+        :ui="{
+          trailingIcon: 'text-dimmed'
+        }"
+      />
+    </UDropdownMenu>
 
-    <template #chip-leading="{ item }">
-      <div class="inline-flex items-center justify-center shrink-0 size-5">
-        <span
-          class="rounded-full ring ring-bg bg-(--chip-light) dark:bg-(--chip-dark) size-2"
-          :style="{
-            '--chip-light': `var(--color-${(item as any).chip}-500)`,
-            '--chip-dark': `var(--color-${(item as any).chip}-400)`
-          }"
-        />
-      </div>
-    </template>
-  </UDropdownMenu>
+    <!-- Modale de confirmation de déconnexion -->
+    <UModal v-model:open="showLogoutModal">
+      <template #content>
+        <div class="p-6 text-center">
+          <div class="mx-auto w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4">
+            <UIcon name="i-lucide-log-out" class="w-7 h-7 text-red-600 dark:text-red-400" />
+          </div>
+          
+          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Se déconnecter ?
+          </h3>
+          
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            Êtes-vous sûr de vouloir vous déconnecter de votre compte ?
+          </p>
+          
+          <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              class="cursor-pointer"
+              @click="showLogoutModal = false"
+            >
+              Annuler
+            </UButton>
+            
+            <UButton
+              color="red"
+              icon="i-lucide-log-out"
+              class="cursor-pointer"
+              @click="handleLogout"
+            >
+              Se déconnecter
+            </UButton>
+          </div>
+        </div>
+      </template>
+    </UModal>
+  </div>
 </template>
