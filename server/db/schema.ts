@@ -252,3 +252,45 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     references: [chats.id]
   })
 }))
+// =============================================
+// TABLE SCHOLARSHIP_CHATS (Conversations Bourses)
+// =============================================
+export const scholarshipChats = sqliteTable('scholarship_chats', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  title: text('title'),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date())
+}, table => [
+  index('scholarship_chats_user_id_idx').on(table.userId)
+])
+
+// =============================================
+// TABLE SCHOLARSHIP_MESSAGES (Messages Bourses)
+// =============================================
+export const scholarshipMessages = sqliteTable('scholarship_messages', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  chatId: text('chat_id').notNull().references(() => scholarshipChats.id, { onDelete: 'cascade' }),
+  role: text('role', { enum: ['user', 'assistant'] }).notNull(),
+  parts: text('parts', { mode: 'json' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date())
+}, table => [
+  index('scholarship_messages_chat_id_idx').on(table.chatId)
+])
+
+// =============================================
+// RELATIONS
+// =============================================
+export const scholarshipChatsRelations = relations(scholarshipChats, ({ one, many }) => ({
+  user: one(users, {
+    fields: [scholarshipChats.userId],
+    references: [users.id]
+  }),
+  messages: many(scholarshipMessages)
+}))
+
+export const scholarshipMessagesRelations = relations(scholarshipMessages, ({ one }) => ({
+  chat: one(scholarshipChats, {
+    fields: [scholarshipMessages.chatId],
+    references: [scholarshipChats.id]
+  })
+}))

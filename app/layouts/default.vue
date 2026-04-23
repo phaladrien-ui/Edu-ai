@@ -19,6 +19,7 @@ watch(loggedIn, async (newValue, oldValue) => {
   if (newValue && !oldValue) {
     await refreshSession()
     await refreshChats()
+    await refreshScholarshipChats()
     window.location.reload()
   }
   
@@ -30,6 +31,10 @@ watch(loggedIn, async (newValue, oldValue) => {
 const open = ref(false)
 const conversationsLoading = ref(true)
 
+// 🔥 État des accordéons
+const chatMeOpen = ref(true)
+const boursesOpen = ref(true)
+
 // Navigation items - "Progression" conditionnel
 const mainNavItems = computed(() => {
   const items = [
@@ -39,7 +44,6 @@ const mainNavItems = computed(() => {
     { label: 'Labs', value: 'labs', to: '/labs', icon: 'i-lucide-flask-conical' },
   ]
   
-  // Ajouter Progression uniquement si connecté
   if (loggedIn.value) {
     items.push({ label: 'Progression', value: 'progress', to: '/progress', icon: 'i-lucide-trending-up' })
   }
@@ -54,6 +58,7 @@ const deleteModal = overlay.create(LazyModalConfirm, {
   }
 })
 
+// Conversations ChatMe
 const { data: chats, refresh: refreshChats } = await useFetch<Chat[]>('/api/chats', {
   key: 'chats',
   transform: data => data.map(chat => ({
@@ -61,8 +66,31 @@ const { data: chats, refresh: refreshChats } = await useFetch<Chat[]>('/api/chat
     label: chat.title || 'Sans titre',
     to: `/chat/${chat.id}`,
     icon: 'i-lucide-message-circle',
-    createdAt: chat.createdAt
+    createdAt: chat.createdAt,
+    type: 'chatme'
   }))
+})
+
+// Conversations Bourses
+const { data: scholarshipChats, refresh: refreshScholarshipChats } = await useFetch<Chat[]>('/api/scholarships/chats', {
+  key: 'scholarship-chats',
+  transform: data => data.map(chat => ({
+    id: chat.id,
+    label: chat.title || 'Sans titre',
+    to: `/scholarships/chat/${chat.id}`,
+    icon: 'i-lucide-trophy',
+    createdAt: chat.createdAt,
+    type: 'scholarship'
+  }))
+})
+
+// Fusionner les deux listes
+const allChats = computed(() => {
+  const chatme = (chats.value || []).map(c => ({ ...c, type: 'chatme' }))
+  const bourses = (scholarshipChats.value || []).map(c => ({ ...c, type: 'scholarship' }))
+  return [...chatme, ...bourses].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
 })
 
 onMounted(() => {
@@ -76,11 +104,15 @@ onNuxtReady(async () => {
   for (const chat of first10) {
     await $fetch(`/api/chats/${chat.id}`)
   }
+  const firstScholarship = (scholarshipChats.value || []).slice(0, 10)
+  for (const chat of firstScholarship) {
+    await $fetch(`/api/scholarships/chat/${chat.id}`)
+  }
 })
 
-const { groups } = useChats(chats)
+const { groups } = useChats(allChats)
 
-const items = computed(() => groups.value?.flatMap((group) => {
+const allItems = computed(() => groups.value?.flatMap((group) => {
   return [{
     label: group.label,
     type: 'label' as const
@@ -92,14 +124,28 @@ const items = computed(() => groups.value?.flatMap((group) => {
   }))]
 }))
 
-async function deleteChat(id: string) {
+// 🔥 SÉPARER LES ITEMS PAR TYPE
+const chatMeItems = computed(() => {
+  return allItems.value?.filter((item: any) => 
+    item.type === 'chatme' || (!item.type && !item.to?.startsWith('/scholarships') && item.to)
+  ) || []
+})
+
+const scholarshipItems = computed(() => {
+  return allItems.value?.filter((item: any) => 
+    item.type === 'scholarship' || (item.to && item.to.startsWith('/scholarships'))
+  ) || []
+})
+
+// 🔥 DELETE ADAPTÉ AUX DEUX TYPES
+async function deleteChat(id: string, type: 'chatme' | 'scholarship' = 'chatme') {
   const instance = deleteModal.open()
   const result = await instance.result
-  if (!result) {
-    return
-  }
+  if (!result) return
 
-  await $fetch(`/api/chats/${id}`, { method: 'DELETE' })
+  const endpoint = type === 'scholarship' ? `/api/scholarships/chat/${id}` : `/api/chats/${id}`
+  
+  await $fetch(endpoint, { method: 'DELETE' })
 
   toast.add({
     title: 'Conversation supprimée',
@@ -107,7 +153,12 @@ async function deleteChat(id: string) {
     icon: 'i-lucide-trash'
   })
 
-  refreshChats()
+  if (type === 'scholarship') {
+    refreshScholarshipChats()
+  } else {
+    refreshChats()
+  }
+  
   conversationsLoading.value = true
   setTimeout(() => {
     conversationsLoading.value = false
@@ -117,6 +168,16 @@ async function deleteChat(id: string) {
     navigateTo('/')
   }
 }
+
+watch(loggedIn, () => {
+  refreshChats()
+  refreshScholarshipChats()
+  open.value = false
+  conversationsLoading.value = true
+  setTimeout(() => {
+    conversationsLoading.value = false
+  }, 400)
+})
 
 defineShortcuts({
   c: () => {
@@ -139,9 +200,9 @@ function toggleSidebar(e: MouseEvent) {
   }
 }
 
-// Fonction appelée après déconnexion réussie
 function handleUserLogout() {
   refreshChats()
+  refreshScholarshipChats()
   open.value = false
 }
 
@@ -172,12 +233,10 @@ const skeletonCount = 6
               <span v-if="!collapsed" class="text-xl font-light tracking-tighter text-gray-800 dark:text-gray-100">EduAI</span>
             </NuxtLink>
 
-            <!-- Icônes de recherche et collapse - UNIQUEMENT si connecté -->
             <div v-if="!collapsed && loggedIn" class="flex items-center gap-1.5 ml-auto">
               <UDashboardSearchButton collapsed class="cursor-pointer" />
               <UDashboardSidebarCollapse class="cursor-pointer" />
             </div>
-            <!-- Juste le collapse si non connecté -->
             <div v-if="!collapsed && !loggedIn" class="flex items-center gap-1.5 ml-auto">
               <UDashboardSidebarCollapse class="cursor-pointer" />
             </div>
@@ -193,57 +252,17 @@ const skeletonCount = 6
               
               <!-- Nouvelle conversation -->
               <div class="w-full px-3 pt-2">
-                <UTooltip 
-                  v-if="collapsed" 
-                  text="Nouvelle conversation" 
-                  side="right"
-                  class="w-full"
-                >
-                  <UButton
-                    icon="i-lucide-plus"
-                    variant="soft"
-                    block
-                    to="/"
-                    @click.stop="open = false"
-                    square
-                    class="cursor-pointer hover:scale-105 transition-transform w-full"
-                  />
+                <UTooltip v-if="collapsed" text="Nouvelle conversation" side="right" class="w-full">
+                  <UButton icon="i-lucide-plus" variant="soft" block to="/" @click.stop="open = false" square class="cursor-pointer hover:scale-105 transition-transform w-full" />
                 </UTooltip>
-                <UButton
-                  v-else
-                  label="Nouvelle conversation"
-                  variant="soft"
-                  block
-                  to="/"
-                  @click.stop="open = false"
-                  class="cursor-pointer font-light w-full justify-start px-3"
-                />
+                <UButton v-else label="Nouvelle conversation" variant="soft" block to="/" @click.stop="open = false" class="cursor-pointer font-light w-full justify-start px-3" />
               </div>
 
               <!-- Navigation -->
               <div class="w-full px-3 mt-2">
                 <div class="w-full space-y-0.5">
-                  <UTooltip 
-                    v-for="item in mainNavItems" 
-                    :key="item.value"
-                    :text="item.label"
-                    side="right"
-                    :disabled="!collapsed"
-                    class="w-full"
-                  >
-                    <UButton
-                      :to="item.to"
-                      :icon="item.icon"
-                      variant="ghost"
-                      color="neutral"
-                      :class="[
-                        'w-full justify-start cursor-pointer transition-all duration-200 font-light px-3',
-                        { 'bg-gray-100 dark:bg-gray-800': route.path.startsWith(item.to) },
-                        collapsed ? 'justify-center hover:bg-gray-100 dark:hover:bg-gray-800' : ''
-                      ]"
-                      :square="collapsed"
-                      @click.stop=""
-                    >
+                  <UTooltip v-for="item in mainNavItems" :key="item.value" :text="item.label" side="right" :disabled="!collapsed" class="w-full">
+                    <UButton :to="item.to" :icon="item.icon" variant="ghost" color="neutral" :class="['w-full justify-start cursor-pointer transition-all duration-200 font-light px-3', { 'bg-gray-100 dark:bg-gray-800': route.path.startsWith(item.to) }, collapsed ? 'justify-center hover:bg-gray-100 dark:hover:bg-gray-800' : '']" :square="collapsed" @click.stop="">
                       <span v-if="!collapsed">{{ item.label }}</span>
                     </UButton>
                   </UTooltip>
@@ -265,81 +284,81 @@ const skeletonCount = 6
                 </UTooltip>
               </div>
 
-              <!-- Conversations -->
+              <!-- 🔥 CONVERSATIONS AVEC ACCORDÉONS MINIMALISTES -->
               <div v-if="!collapsed" class="w-full px-3 pt-3">
-                <h3 class="text-[10px] font-light text-gray-400 uppercase tracking-wider mb-2 px-3 w-full">
-                  Conversations
-                </h3>
 
-                <div class="w-full">
-                  <template v-if="conversationsLoading">
-                    <div class="w-full space-y-1">
-                      <div 
-                        v-for="groupIndex in 2" 
-                        :key="`group-${groupIndex}`"
-                        class="w-full"
-                      >
-                        <div class="px-3 py-2">
-                          <div 
-                            class="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"
-                            :class="groupIndex === 1 ? 'w-16' : 'w-20'"
-                            :style="{ animationDelay: `${groupIndex * 50}ms` }"
-                          ></div>
-                        </div>
-                        
-                        <div class="w-full space-y-0.5">
-                          <div 
-                            v-for="itemIndex in (groupIndex === 1 ? 3 : 4)" 
-                            :key="`item-${groupIndex}-${itemIndex}`"
-                            class="flex items-center gap-3 px-3 py-2 animate-pulse"
-                            :style="{ animationDelay: `${(groupIndex * 100) + (itemIndex * 30)}ms` }"
-                          >
-                            <div class="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                            <div 
-                              class="h-3.5 bg-gray-200 dark:bg-gray-700 rounded"
-                              :class="[
-                                itemIndex === 1 ? 'w-32' : 
-                                itemIndex === 2 ? 'w-40' : 
-                                itemIndex === 3 ? 'w-28' : 
-                                'w-36'
-                              ]"
-                            ></div>
-                          </div>
-                        </div>
+                <!-- SECTION CHATME -->
+                <div class="mb-3">
+                  <button 
+                    class="flex items-center gap-2 mb-1 px-3 py-1.5 w-full group cursor-pointer rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150"
+                    @click="chatMeOpen = !chatMeOpen"
+                  >
+                    <h3 class="text-[10px] font-light text-gray-400 uppercase tracking-wider">ChatMe</h3>
+                    <span class="text-[10px] text-gray-400 ml-auto">{{ chatMeItems.length }}</span>
+                    <UIcon 
+                      :name="chatMeOpen ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" 
+                      class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-all duration-200 shrink-0"
+                    />
+                  </button>
+                  
+                  <div v-show="chatMeOpen" class="w-full">
+                    <template v-if="conversationsLoading">
+                      <div v-for="i in 2" :key="`chatme-skel-${i}`" class="flex items-center gap-3 px-3 py-2 animate-pulse">
+                        <div class="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        <div class="h-3.5 bg-gray-200 dark:bg-gray-700 rounded" :class="i === 1 ? 'w-32' : 'w-40'"></div>
                       </div>
-                    </div>
-                  </template>
-
-                  <template v-else>
-                    <div class="conversations-container">
-                      <UNavigationMenu
-                        :items="items"
-                        :collapsed="collapsed"
-                        orientation="vertical"
-                        :ui="{ 
-                          link: 'overflow-hidden cursor-pointer font-light w-full px-3 group',
-                          wrapper: 'w-full',
-                          list: 'w-full space-y-0.5'
-                        }"
-                        class="w-full"
-                      >
+                    </template>
+                    <template v-else>
+                      <UNavigationMenu :items="chatMeItems" :collapsed="collapsed" orientation="vertical" :ui="{ link: 'overflow-hidden cursor-pointer font-light w-full px-3 group', wrapper: 'w-full', list: 'w-full space-y-0.5' }" class="w-full">
                         <template #chat-trailing="{ item }">
                           <div class="flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            <UButton
-                              icon="i-lucide-x"
-                              color="neutral"
-                              variant="ghost"
-                              size="xs"
-                              class="text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 p-0.5 cursor-pointer"
-                              tabindex="-1"
-                              @click.stop.prevent="deleteChat((item as any).id)"
-                            />
+                            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" class="text-gray-400 hover:text-red-500 p-0.5 cursor-pointer" @click.stop.prevent="deleteChat((item as any).id, 'chatme')" />
                           </div>
                         </template>
                       </UNavigationMenu>
-                    </div>
-                  </template>
+                    </template>
+                  </div>
                 </div>
+
+                <!-- SECTION BOURSES -->
+                <div>
+                  <button 
+                    class="flex items-center gap-2 mb-1 px-3 py-1.5 w-full group cursor-pointer rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150"
+                    @click="boursesOpen = !boursesOpen"
+                  >
+                    <h3 class="text-[10px] font-light text-gray-400 uppercase tracking-wider">Bourses</h3>
+                    <span class="text-[10px] text-gray-400 ml-auto">{{ scholarshipItems.length }}</span>
+                    <UIcon 
+                      :name="boursesOpen ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" 
+                      class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-all duration-200 shrink-0"
+                    />
+                  </button>
+                  
+                  <div v-show="boursesOpen" class="w-full">
+                    <template v-if="conversationsLoading && scholarshipItems.length === 0">
+                      <div v-for="i in 2" :key="`bourses-skel-${i}`" class="flex items-center gap-3 px-3 py-2 animate-pulse">
+                        <div class="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        <div class="h-3.5 bg-gray-200 dark:bg-gray-700 rounded" :class="i === 1 ? 'w-36' : 'w-28'"></div>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <UNavigationMenu :items="scholarshipItems" :collapsed="collapsed" orientation="vertical" :ui="{ link: 'overflow-hidden cursor-pointer font-light w-full px-3 group', wrapper: 'w-full', list: 'w-full space-y-0.5' }" class="w-full">
+                        <template #chat-trailing="{ item }">
+                          <div class="flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" class="text-gray-400 hover:text-red-500 p-0.5 cursor-pointer" @click.stop.prevent="deleteChat((item as any).id, 'scholarship')" />
+                          </div>
+                        </template>
+                      </UNavigationMenu>
+                    </template>
+                  </div>
+                </div>
+
+                <!-- État vide -->
+                <div v-if="chatMeItems.length === 0 && scholarshipItems.length === 0 && !conversationsLoading" class="text-center py-8">
+                  <UIcon name="i-lucide-message-circle" class="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                  <p class="text-xs text-gray-400 dark:text-gray-500">Aucune conversation</p>
+                </div>
+
               </div>
 
               <div class="h-4"></div>
@@ -350,35 +369,20 @@ const skeletonCount = 6
         </div>
       </template>
 
-      <!-- FOOTER AVEC USERMENU CORRIGÉ -->
+      <!-- FOOTER -->
       <template #footer="{ collapsed }">
         <div class="w-full border-t border-gray-100 dark:border-gray-800">
           <UserMenu v-if="loggedIn" :collapsed="collapsed" @logout="handleUserLogout" class="cursor-pointer w-full" />
           
           <div v-else class="w-full px-3 py-2 space-y-1">
-            <!-- GitHub -->
             <UTooltip v-if="collapsed" text="Connexion GitHub" side="right" class="w-full">
-              <UButton
-                color="neutral"
-                variant="ghost"
-                class="w-full cursor-pointer justify-center"
-                square
-                @click.stop="openInPopup('/auth/github')"
-              >
+              <UButton color="neutral" variant="ghost" class="w-full cursor-pointer justify-center" square @click.stop="openInPopup('/auth/github')">
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
                 </svg>
               </UButton>
             </UTooltip>
-            <UButton
-              v-else
-              label="GitHub"
-              color="neutral"
-              variant="ghost"
-              block
-              class="cursor-pointer font-light w-full px-3 justify-start"
-              @click.stop="openInPopup('/auth/github')"
-            >
+            <UButton v-else label="GitHub" color="neutral" variant="ghost" block class="cursor-pointer font-light w-full px-3 justify-start" @click.stop="openInPopup('/auth/github')">
               <template #leading>
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
@@ -386,15 +390,8 @@ const skeletonCount = 6
               </template>
             </UButton>
 
-            <!-- Google -->
             <UTooltip v-if="collapsed" text="Connexion Google" side="right" class="w-full">
-              <UButton
-                color="neutral"
-                variant="ghost"
-                class="w-full cursor-pointer justify-center"
-                square
-                @click.stop="openInPopup('/auth/google')"
-              >
+              <UButton color="neutral" variant="ghost" class="w-full cursor-pointer justify-center" square @click.stop="openInPopup('/auth/google')">
                 <svg class="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -403,15 +400,7 @@ const skeletonCount = 6
                 </svg>
               </UButton>
             </UTooltip>
-            <UButton
-              v-else
-              label="Google"
-              color="neutral"
-              variant="ghost"
-              block
-              class="cursor-pointer font-light w-full px-3 justify-start"
-              @click.stop="openInPopup('/auth/google')"
-            >
+            <UButton v-else label="Google" color="neutral" variant="ghost" block class="cursor-pointer font-light w-full px-3 justify-start" @click.stop="openInPopup('/auth/google')">
               <template #leading>
                 <svg class="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -431,169 +420,39 @@ const skeletonCount = 6
               </div>
             </div>
 
-            <UButton
-              :label="collapsed ? '' : 'Se connecter'"
-              icon="i-lucide-log-in"
-              color="primary"
-              variant="soft"
-              block
-              :square="collapsed"
-              to="/login"
-              class="cursor-pointer font-light w-full"
-              :class="collapsed ? 'justify-center' : 'justify-start px-3'"
-              @click.stop="open = false"
-            />
+            <UButton :label="collapsed ? '' : 'Se connecter'" icon="i-lucide-log-in" color="primary" variant="soft" block :square="collapsed" to="/login" class="cursor-pointer font-light w-full" :class="collapsed ? 'justify-center' : 'justify-start px-3'" @click.stop="open = false" />
           </div>
         </div>
       </template>
     </UDashboardSidebar>
 
-    <UDashboardSearch
-      placeholder="Rechercher des conversations..."
-      :groups="[{
-        id: 'links',
-        items: [{
-          label: 'Nouvelle conversation',
-          to: '/',
-          icon: 'i-lucide-square-pen'
-        }]
-      }, ...groups]"
-    />
+    <UDashboardSearch placeholder="Rechercher des conversations..." :groups="[{ id: 'links', items: [{ label: 'Nouvelle conversation', to: '/', icon: 'i-lucide-square-pen' }] }, ...groups]" />
 
     <slot />
   </UDashboardGroup>
 </template>
 
 <style scoped>
-.sidebar-wrapper {
-  height: 100%;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar-scrollport {
-  cursor: ew-resize;
-  width: 100% !important;
-  overflow-y: scroll !important;
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  transition: scrollbar-color 0.3s ease;
-}
-
-.sidebar-scrollport:hover {
-  scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
-}
-
-.sidebar-scrollport::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.sidebar-scrollport::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar-scrollport::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-  transition: background-color 0.3s ease;
-}
-
-.sidebar-scrollport:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.4);
-}
-
-.sidebar-scrollport:hover::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(156, 163, 175, 0.6);
-}
-
-.dark .sidebar-scrollport:hover {
-  scrollbar-color: rgba(75, 85, 99, 0.4) transparent;
-}
-
-.dark .sidebar-scrollport:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(75, 85, 99, 0.4);
-}
-
-.dark .sidebar-scrollport:hover::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(75, 85, 99, 0.6);
-}
-
-.sidebar-scrollport,
-.sidebar-scrollport > div,
-.sidebar-scrollport > div > div,
-.sidebar-scrollport :deep(.u-navigation-menu),
-.sidebar-scrollport :deep(.u-navigation-menu > div),
-.sidebar-scrollport :deep(.u-navigation-menu ul),
-.sidebar-scrollport :deep(.u-navigation-menu li),
-.sidebar-scrollport :deep(.u-navigation-menu a),
-.sidebar-scrollport :deep(.u-navigation-menu [role="menuitem"]) {
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.sidebar-scrollport :deep(.u-navigation-menu a),
-.sidebar-scrollport :deep(.u-navigation-menu [role="menuitem"]),
-.sidebar-scrollport :deep(.u-button) {
-  padding-left: 0.75rem !important;
-  padding-right: 0.75rem !important;
-  justify-content: flex-start !important;
-}
-
-.sidebar-scrollport :deep(.u-button.square) {
-  justify-content: center !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-.sidebar-scrollport :deep(ul),
-.sidebar-scrollport :deep(li) {
-  margin: 0 !important;
-  padding: 0 !important;
-  list-style: none !important;
-}
-
-.sidebar-scrollport button,
-.sidebar-scrollport a,
-.sidebar-scrollport [role="button"],
-.sidebar-scrollport .u-button,
-.sidebar-scrollport .cursor-pointer,
-.sidebar-scrollport :deep(.u-dashboard-search-button),
-.sidebar-scrollport :deep(.u-dashboard-sidebar-collapse),
-.sidebar-wrapper :deep(.u-dashboard-search-button),
-.sidebar-wrapper :deep(.u-dashboard-sidebar-collapse) {
-  cursor: pointer !important;
-}
-
-.sidebar-scrollport h3,
-.sidebar-scrollport .text-muted:not(button):not(a):not([role="button"]) {
-  cursor: ew-resize !important;
-}
-
-:deep(.u-dashboard-search-button),
-:deep(.u-dashboard-sidebar-collapse) {
-  cursor: pointer !important;
-}
-
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.conversations-container :deep(.u-navigation-menu li) {
-  opacity: 0;
-  animation: fade-in-up 0.35s ease-out forwards;
-}
-
+.sidebar-wrapper { height: 100%; width: 100%; display: flex; flex-direction: column; }
+.sidebar-scrollport { cursor: ew-resize; width: 100% !important; overflow-y: scroll !important; scrollbar-width: thin; scrollbar-color: transparent transparent; transition: scrollbar-color 0.3s ease; }
+.sidebar-scrollport:hover { scrollbar-color: rgba(156, 163, 175, 0.4) transparent; }
+.sidebar-scrollport::-webkit-scrollbar { width: 8px; height: 8px; }
+.sidebar-scrollport::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scrollport::-webkit-scrollbar-thumb { background-color: transparent; border-radius: 4px; border: 2px solid transparent; background-clip: content-box; transition: background-color 0.3s ease; }
+.sidebar-scrollport:hover::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.4); }
+.sidebar-scrollport:hover::-webkit-scrollbar-thumb:hover { background-color: rgba(156, 163, 175, 0.6); }
+.dark .sidebar-scrollport:hover { scrollbar-color: rgba(75, 85, 99, 0.4) transparent; }
+.dark .sidebar-scrollport:hover::-webkit-scrollbar-thumb { background-color: rgba(75, 85, 99, 0.4); }
+.dark .sidebar-scrollport:hover::-webkit-scrollbar-thumb:hover { background-color: rgba(75, 85, 99, 0.6); }
+.sidebar-scrollport, .sidebar-scrollport > div, .sidebar-scrollport > div > div, .sidebar-scrollport :deep(.u-navigation-menu), .sidebar-scrollport :deep(.u-navigation-menu > div), .sidebar-scrollport :deep(.u-navigation-menu ul), .sidebar-scrollport :deep(.u-navigation-menu li), .sidebar-scrollport :deep(.u-navigation-menu a), .sidebar-scrollport :deep(.u-navigation-menu [role="menuitem"]) { width: 100% !important; box-sizing: border-box !important; }
+.sidebar-scrollport :deep(.u-navigation-menu a), .sidebar-scrollport :deep(.u-navigation-menu [role="menuitem"]), .sidebar-scrollport :deep(.u-button) { padding-left: 0.75rem !important; padding-right: 0.75rem !important; justify-content: flex-start !important; }
+.sidebar-scrollport :deep(.u-button.square) { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+.sidebar-scrollport :deep(ul), .sidebar-scrollport :deep(li) { margin: 0 !important; padding: 0 !important; list-style: none !important; }
+.sidebar-scrollport button, .sidebar-scrollport a, .sidebar-scrollport [role="button"], .sidebar-scrollport .u-button, .sidebar-scrollport .cursor-pointer, .sidebar-scrollport :deep(.u-dashboard-search-button), .sidebar-scrollport :deep(.u-dashboard-sidebar-collapse), .sidebar-wrapper :deep(.u-dashboard-search-button), .sidebar-wrapper :deep(.u-dashboard-sidebar-collapse) { cursor: pointer !important; }
+.sidebar-scrollport h3, .sidebar-scrollport .text-muted:not(button):not(a):not([role="button"]) { cursor: ew-resize !important; }
+:deep(.u-dashboard-search-button), :deep(.u-dashboard-sidebar-collapse) { cursor: pointer !important; }
+@keyframes fade-in-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.conversations-container :deep(.u-navigation-menu li) { opacity: 0; animation: fade-in-up 0.35s ease-out forwards; }
 .conversations-container :deep(.u-navigation-menu li:nth-child(1)) { animation-delay: 0.03s; }
 .conversations-container :deep(.u-navigation-menu li:nth-child(2)) { animation-delay: 0.06s; }
 .conversations-container :deep(.u-navigation-menu li:nth-child(3)) { animation-delay: 0.09s; }
