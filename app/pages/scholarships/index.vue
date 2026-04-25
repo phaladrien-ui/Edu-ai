@@ -28,8 +28,6 @@ async function createChat(prompt: string) {
   loading.value = true
 
   const parts: Array<{ type: string, text?: string }> = [{ type: 'text', text: prompt }]
-  
-  // 🔥 Générer un NOUVEL ID à chaque création
   const newChatId = crypto.randomUUID()
 
   try {
@@ -44,6 +42,9 @@ async function createChat(prompt: string) {
       }
     })
 
+    // 🔥 Rafraîchir les données de la sidebar AVANT la redirection
+    refreshNuxtData('scholarship-chats')
+    
     await navigateTo(`/scholarships/chat/${chat.id}`)
   } catch (error: any) {
     toast.add({

@@ -3,6 +3,7 @@ import { db, schema } from 'hub:db'
 import { z } from 'zod'
 import { generateText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
+import { eq } from 'drizzle-orm'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -28,7 +29,7 @@ export default defineEventHandler(async (event) => {
     parts: message.parts
   })
 
-  // 🔥 Générer un titre automatiquement
+  // Générer un titre automatiquement
   const deepseek = createOpenAI({
     baseURL: 'https://api.deepseek.com',
     apiKey: 'sk-78ddcddacad6446988fef834cd1d789d',

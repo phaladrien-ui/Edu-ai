@@ -6,23 +6,19 @@ const toast = useToast()
 const overlay = useOverlay()
 const { loggedIn, openInPopup, fetch: refreshSession, clear } = useUserSession()
 
-// Surveiller les changements de route pour rafraîchir la session après OAuth
 watch(() => route.query, async (query) => {
   if (query.error || route.path === '/login') return
   await refreshSession()
 }, { immediate: true })
 
-// Forcer le rafraîchissement complet après connexion/déconnexion
 watch(loggedIn, async (newValue, oldValue) => {
   if (oldValue === undefined) return
-  
   if (newValue && !oldValue) {
     await refreshSession()
     await refreshChats()
     await refreshScholarshipChats()
     window.location.reload()
   }
-  
   if (!newValue && oldValue) {
     await navigateTo('/login')
   }
@@ -31,11 +27,20 @@ watch(loggedIn, async (newValue, oldValue) => {
 const open = ref(false)
 const conversationsLoading = ref(true)
 
-// 🔥 État des accordéons
+// État des accordéons
 const chatMeOpen = ref(true)
 const boursesOpen = ref(true)
 
-// Navigation items - "Progression" conditionnel
+// Restaurer APRÈS le montage client
+onMounted(() => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const savedChatMe = localStorage.getItem('sidebar-chatme-open')
+    const savedBourses = localStorage.getItem('sidebar-bourses-open')
+    if (savedChatMe !== null) chatMeOpen.value = savedChatMe === 'true'
+    if (savedBourses !== null) boursesOpen.value = savedBourses === 'true'
+  }
+})
+
 const mainNavItems = computed(() => {
   const items = [
     { label: 'ChatMe', value: 'chat', to: '/', icon: 'i-lucide-message-circle' },
@@ -43,11 +48,9 @@ const mainNavItems = computed(() => {
     { label: 'Bourses', value: 'scholarships', to: '/scholarships', icon: 'i-lucide-trophy' },
     { label: 'Labs', value: 'labs', to: '/labs', icon: 'i-lucide-flask-conical' },
   ]
-  
   if (loggedIn.value) {
     items.push({ label: 'Progression', value: 'progress', to: '/progress', icon: 'i-lucide-trending-up' })
   }
-  
   return items
 })
 
@@ -58,7 +61,6 @@ const deleteModal = overlay.create(LazyModalConfirm, {
   }
 })
 
-// Conversations ChatMe
 const { data: chats, refresh: refreshChats } = await useFetch<Chat[]>('/api/chats', {
   key: 'chats',
   transform: data => data.map(chat => ({
@@ -71,7 +73,6 @@ const { data: chats, refresh: refreshChats } = await useFetch<Chat[]>('/api/chat
   }))
 })
 
-// Conversations Bourses
 const { data: scholarshipChats, refresh: refreshScholarshipChats } = await useFetch<Chat[]>('/api/scholarships/chats', {
   key: 'scholarship-chats',
   transform: data => data.map(chat => ({
@@ -82,15 +83,6 @@ const { data: scholarshipChats, refresh: refreshScholarshipChats } = await useFe
     createdAt: chat.createdAt,
     type: 'scholarship'
   }))
-})
-
-// Fusionner les deux listes
-const allChats = computed(() => {
-  const chatme = (chats.value || []).map(c => ({ ...c, type: 'chatme' }))
-  const bourses = (scholarshipChats.value || []).map(c => ({ ...c, type: 'scholarship' }))
-  return [...chatme, ...bourses].sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  )
 })
 
 onMounted(() => {
@@ -110,7 +102,13 @@ onNuxtReady(async () => {
   }
 })
 
-const { groups } = useChats(allChats)
+const { groups } = useChats(computed(() => {
+  const chatme = (chats.value || []).map(c => ({ ...c, type: 'chatme' }))
+  const bourses = (scholarshipChats.value || []).map(c => ({ ...c, type: 'scholarship' }))
+  return [...chatme, ...bourses].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+}))
 
 const allItems = computed(() => groups.value?.flatMap((group) => {
   return [{
@@ -124,7 +122,6 @@ const allItems = computed(() => groups.value?.flatMap((group) => {
   }))]
 }))
 
-// 🔥 SÉPARER LES ITEMS PAR TYPE
 const chatMeItems = computed(() => {
   return allItems.value?.filter((item: any) => 
     item.type === 'chatme' || (!item.type && !item.to?.startsWith('/scholarships') && item.to)
@@ -137,14 +134,38 @@ const scholarshipItems = computed(() => {
   ) || []
 })
 
-// 🔥 DELETE ADAPTÉ AUX DEUX TYPES
+// 🔥 Sauvegarde à chaque changement (APRÈS déclaration des refs)
+watch(chatMeOpen, (newValue) => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    localStorage.setItem('sidebar-chatme-open', String(newValue))
+  }
+})
+
+watch(boursesOpen, (newValue) => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    localStorage.setItem('sidebar-bourses-open', String(newValue))
+  }
+})
+
+// 🔥 Fermer automatiquement si +8 items et pas de préférence (APRÈS déclaration des computed)
+watch(chatMeItems, (items) => {
+  if (typeof window !== 'undefined' && window.localStorage && localStorage.getItem('sidebar-chatme-open') === null && items.length > 8) {
+    chatMeOpen.value = false
+  }
+})
+
+watch(scholarshipItems, (items) => {
+  if (typeof window !== 'undefined' && window.localStorage && localStorage.getItem('sidebar-bourses-open') === null && items.length > 8) {
+    boursesOpen.value = false
+  }
+})
+
 async function deleteChat(id: string, type: 'chatme' | 'scholarship' = 'chatme') {
   const instance = deleteModal.open()
   const result = await instance.result
   if (!result) return
 
   const endpoint = type === 'scholarship' ? `/api/scholarships/chat/${id}` : `/api/chats/${id}`
-  
   await $fetch(endpoint, { method: 'DELETE' })
 
   toast.add({
@@ -180,9 +201,7 @@ watch(loggedIn, () => {
 })
 
 defineShortcuts({
-  c: () => {
-    navigateTo('/')
-  }
+  c: () => { navigateTo('/') }
 })
 
 function toggleSidebar(e: MouseEvent) {
@@ -194,7 +213,6 @@ function toggleSidebar(e: MouseEvent) {
     target.closest('.u-button') ||
     target.closest('.u-avatar') ||
     target.closest('.u-tooltip')
-  
   if (!isInteractive) {
     open.value = !open.value
   }
@@ -205,8 +223,6 @@ function handleUserLogout() {
   refreshScholarshipChats()
   open.value = false
 }
-
-const skeletonCount = 6
 </script>
 
 <template>
@@ -218,11 +234,7 @@ const skeletonCount = 6
       collapsible
       :resizable="false"
       class="bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800"
-      :ui="{ 
-        header: 'p-0',
-        body: 'p-0',
-        footer: 'p-0'
-      }"
+      :ui="{ header: 'p-0', body: 'p-0', footer: 'p-0' }"
       @click="toggleSidebar"
     >
       <template #header="{ collapsed }">
@@ -232,7 +244,6 @@ const skeletonCount = 6
               <Logo class="h-8 w-auto shrink-0" />
               <span v-if="!collapsed" class="text-xl font-light tracking-tighter text-gray-800 dark:text-gray-100">EduAI</span>
             </NuxtLink>
-
             <div v-if="!collapsed && loggedIn" class="flex items-center gap-1.5 ml-auto">
               <UDashboardSearchButton collapsed class="cursor-pointer" />
               <UDashboardSidebarCollapse class="cursor-pointer" />
@@ -246,11 +257,9 @@ const skeletonCount = 6
 
       <template #default="{ collapsed }">
         <div class="flex flex-col w-full h-full sidebar-wrapper">
-          
           <div class="flex-1 overflow-y-auto sidebar-scrollport">
             <div class="flex flex-col w-full">
               
-              <!-- Nouvelle conversation -->
               <div class="w-full px-3 pt-2">
                 <UTooltip v-if="collapsed" text="Nouvelle conversation" side="right" class="w-full">
                   <UButton icon="i-lucide-plus" variant="soft" block to="/" @click.stop="open = false" square class="cursor-pointer hover:scale-105 transition-transform w-full" />
@@ -258,7 +267,6 @@ const skeletonCount = 6
                 <UButton v-else label="Nouvelle conversation" variant="soft" block to="/" @click.stop="open = false" class="cursor-pointer font-light w-full justify-start px-3" />
               </div>
 
-              <!-- Navigation -->
               <div class="w-full px-3 mt-2">
                 <div class="w-full space-y-0.5">
                   <UTooltip v-for="item in mainNavItems" :key="item.value" :text="item.label" side="right" :disabled="!collapsed" class="w-full">
@@ -269,7 +277,6 @@ const skeletonCount = 6
                 </div>
               </div>
 
-              <!-- Actions collapsed -->
               <div v-if="collapsed && loggedIn" class="w-full px-3 space-y-0.5">
                 <UTooltip text="Rechercher" side="right" class="w-full">
                   <UDashboardSearchButton collapsed class="cursor-pointer hover:scale-105 transition-transform w-full justify-center" />
@@ -284,96 +291,57 @@ const skeletonCount = 6
                 </UTooltip>
               </div>
 
-              <!-- 🔥 CONVERSATIONS AVEC ACCORDÉONS MINIMALISTES -->
               <div v-if="!collapsed" class="w-full px-3 pt-3">
 
-                <!-- SECTION CHATME -->
-                <div class="mb-3">
+                <div v-if="chatMeItems.length > 0" class="mb-3">
                   <button 
                     class="flex items-center gap-2 mb-1 px-3 py-1.5 w-full group cursor-pointer rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150"
                     @click="chatMeOpen = !chatMeOpen"
                   >
                     <h3 class="text-[10px] font-light text-gray-400 uppercase tracking-wider">ChatMe</h3>
-                    <span class="text-[10px] text-gray-400 ml-auto">{{ chatMeItems.length }}</span>
-                    <UIcon 
-                      :name="chatMeOpen ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" 
-                      class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-all duration-200 shrink-0"
-                    />
+                    <UIcon :name="chatMeOpen ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-all duration-200 ml-auto shrink-0" />
                   </button>
-                  
                   <div v-show="chatMeOpen" class="w-full">
-                    <template v-if="conversationsLoading">
-                      <div v-for="i in 2" :key="`chatme-skel-${i}`" class="flex items-center gap-3 px-3 py-2 animate-pulse">
-                        <div class="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                        <div class="h-3.5 bg-gray-200 dark:bg-gray-700 rounded" :class="i === 1 ? 'w-32' : 'w-40'"></div>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <UNavigationMenu :items="chatMeItems" :collapsed="collapsed" orientation="vertical" :ui="{ link: 'overflow-hidden cursor-pointer font-light w-full px-3 group', wrapper: 'w-full', list: 'w-full space-y-0.5' }" class="w-full">
-                        <template #chat-trailing="{ item }">
-                          <div class="flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" class="text-gray-400 hover:text-red-500 p-0.5 cursor-pointer" @click.stop.prevent="deleteChat((item as any).id, 'chatme')" />
-                          </div>
-                        </template>
-                      </UNavigationMenu>
-                    </template>
+                    <UNavigationMenu :items="chatMeItems" :collapsed="collapsed" orientation="vertical" :ui="{ link: 'overflow-hidden cursor-pointer font-light w-full px-3 group', list: 'w-full space-y-0.5' }" class="w-full">
+                      <template #chat-trailing="{ item }">
+                        <div class="flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" class="text-gray-400 hover:text-red-500 p-0.5 cursor-pointer" @click.stop.prevent="deleteChat((item as any).id, 'chatme')" />
+                        </div>
+                      </template>
+                    </UNavigationMenu>
                   </div>
                 </div>
 
-                <!-- SECTION BOURSES -->
-                <div>
+                <div v-if="scholarshipItems.length > 0">
                   <button 
                     class="flex items-center gap-2 mb-1 px-3 py-1.5 w-full group cursor-pointer rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors duration-150"
                     @click="boursesOpen = !boursesOpen"
                   >
                     <h3 class="text-[10px] font-light text-gray-400 uppercase tracking-wider">Bourses</h3>
-                    <span class="text-[10px] text-gray-400 ml-auto">{{ scholarshipItems.length }}</span>
-                    <UIcon 
-                      :name="boursesOpen ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" 
-                      class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-all duration-200 shrink-0"
-                    />
+                    <UIcon :name="boursesOpen ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-all duration-200 ml-auto shrink-0" />
                   </button>
-                  
                   <div v-show="boursesOpen" class="w-full">
-                    <template v-if="conversationsLoading && scholarshipItems.length === 0">
-                      <div v-for="i in 2" :key="`bourses-skel-${i}`" class="flex items-center gap-3 px-3 py-2 animate-pulse">
-                        <div class="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                        <div class="h-3.5 bg-gray-200 dark:bg-gray-700 rounded" :class="i === 1 ? 'w-36' : 'w-28'"></div>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <UNavigationMenu :items="scholarshipItems" :collapsed="collapsed" orientation="vertical" :ui="{ link: 'overflow-hidden cursor-pointer font-light w-full px-3 group', wrapper: 'w-full', list: 'w-full space-y-0.5' }" class="w-full">
-                        <template #chat-trailing="{ item }">
-                          <div class="flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" class="text-gray-400 hover:text-red-500 p-0.5 cursor-pointer" @click.stop.prevent="deleteChat((item as any).id, 'scholarship')" />
-                          </div>
-                        </template>
-                      </UNavigationMenu>
-                    </template>
+                    <UNavigationMenu :items="scholarshipItems" :collapsed="collapsed" orientation="vertical" :ui="{ link: 'overflow-hidden cursor-pointer font-light w-full px-3 group', list: 'w-full space-y-0.5' }" class="w-full">
+                      <template #chat-trailing="{ item }">
+                        <div class="flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="xs" class="text-gray-400 hover:text-red-500 p-0.5 cursor-pointer" @click.stop.prevent="deleteChat((item as any).id, 'scholarship')" />
+                        </div>
+                      </template>
+                    </UNavigationMenu>
                   </div>
-                </div>
-
-                <!-- État vide -->
-                <div v-if="chatMeItems.length === 0 && scholarshipItems.length === 0 && !conversationsLoading" class="text-center py-8">
-                  <UIcon name="i-lucide-message-circle" class="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                  <p class="text-xs text-gray-400 dark:text-gray-500">Aucune conversation</p>
                 </div>
 
               </div>
 
               <div class="h-4"></div>
-
             </div>
           </div>
-
         </div>
       </template>
 
-      <!-- FOOTER -->
       <template #footer="{ collapsed }">
         <div class="w-full border-t border-gray-100 dark:border-gray-800">
           <UserMenu v-if="loggedIn" :collapsed="collapsed" @logout="handleUserLogout" class="cursor-pointer w-full" />
-          
           <div v-else class="w-full px-3 py-2 space-y-1">
             <UTooltip v-if="collapsed" text="Connexion GitHub" side="right" class="w-full">
               <UButton color="neutral" variant="ghost" class="w-full cursor-pointer justify-center" square @click.stop="openInPopup('/auth/github')">
@@ -389,7 +357,6 @@ const skeletonCount = 6
                 </svg>
               </template>
             </UButton>
-
             <UTooltip v-if="collapsed" text="Connexion Google" side="right" class="w-full">
               <UButton color="neutral" variant="ghost" class="w-full cursor-pointer justify-center" square @click.stop="openInPopup('/auth/google')">
                 <svg class="w-5 h-5" viewBox="0 0 24 24">
@@ -410,7 +377,6 @@ const skeletonCount = 6
                 </svg>
               </template>
             </UButton>
-
             <div class="relative my-2">
               <div class="absolute inset-0 flex items-center">
                 <div class="w-full border-t border-gray-300 dark:border-gray-700"></div>
@@ -419,7 +385,6 @@ const skeletonCount = 6
                 <span class="px-2 bg-white dark:bg-gray-900 text-gray-500">ou</span>
               </div>
             </div>
-
             <UButton :label="collapsed ? '' : 'Se connecter'" icon="i-lucide-log-in" color="primary" variant="soft" block :square="collapsed" to="/login" class="cursor-pointer font-light w-full" :class="collapsed ? 'justify-center' : 'justify-start px-3'" @click.stop="open = false" />
           </div>
         </div>
@@ -427,7 +392,6 @@ const skeletonCount = 6
     </UDashboardSidebar>
 
     <UDashboardSearch placeholder="Rechercher des conversations..." :groups="[{ id: 'links', items: [{ label: 'Nouvelle conversation', to: '/', icon: 'i-lucide-square-pen' }] }, ...groups]" />
-
     <slot />
   </UDashboardGroup>
 </template>
